@@ -31,16 +31,16 @@ export default {
         this.$router.push({ name: "Admin" });
       } else {
         await this.fetchUserEntries();
-        if(this.userEntries && this.userEntries.length > 0) {
-          this.$router.push({ 
-            name: "Portfolio",
-            params: {
-              entryId: this.userEntries[0].id
-            }
-          });
-        } else {
+        // if(this.userEntries && this.userEntries.length > 0) {
+        //   this.$router.push({
+        //     name: "Portfolio",
+        //     params: {
+        //       entryId: this.userEntries[0].id
+        //     }
+        //   });
+        // } else {
           this.$router.push({ name: "Exchanges" });
-        }
+        // }
       }
     },
     async fetchUserEntries() {
