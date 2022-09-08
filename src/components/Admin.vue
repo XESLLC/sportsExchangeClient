@@ -96,7 +96,7 @@ export default {
           }
         `,
         variables: {
-          leagueName: "nba-playoffs-2022"
+          leagueName: "nfl"
         }
       });
     },

@@ -140,7 +140,7 @@ export default {
         }
       });
 
-      this.leagueTeams = response.data.getTeamsByLeagueId;      
+      this.leagueTeams = response.data.getTeamsByLeagueId;
       this.tournamentTeams = this.leagueTeams.map((team) => {
         const price = 0;
         const seed = 1;
@@ -195,13 +195,14 @@ export default {
       this.league = response.data.league;
     },
     updateInput(id) {
-      const priceInputValue = this.$refs['priceInput-' + id].value;
-      const seedInputValue = this.$refs['seedInput-' + id].value;
-      const regionInputValue = this.$refs['regionInput-' + id].value;
+      console.log("This Ref id=> ", this.$refs['priceInput-' + id].value)
+      // const priceInputValue = this.$refs['priceInput-' + id].value;
+      // const seedInputValue = this.$refs['seedInput-' + id].value;
+      // const regionInputValue = this.$refs['seedInput-' + id].value;
       const index = this.tournamentTeams.findIndex(team => team.id === id);
-      this.tournamentTeams[index].price = priceInputValue;
-      this.tournamentTeams[index].seed = seedInputValue;
-      this.tournamentTeams[index].region = regionInputValue;
+      this.tournamentTeams[index].price = this.$refs['priceInput-' + id].value;
+      this.tournamentTeams[index].seed = 0;
+      this.tournamentTeams[index].region = '';
     }
   },
   async created() {
