@@ -198,11 +198,11 @@ export default {
       console.log("This Ref id=> ", this.$refs['priceInput-' + id].value)
       // const priceInputValue = this.$refs['priceInput-' + id].value;
       // const seedInputValue = this.$refs['seedInput-' + id].value;
-      // const regionInputValue = this.$refs['seedInput-' + id].value;
+      // const regionInputValue = this.$refs['regionInput-' + id].value;
       const index = this.tournamentTeams.findIndex(team => team.id === id);
       this.tournamentTeams[index].price = this.$refs['priceInput-' + id].value;
-      this.tournamentTeams[index].seed = 0;
-      this.tournamentTeams[index].region = '';
+      this.tournamentTeams[index].seed = this.$refs['seedInput-' + id].value;
+      this.tournamentTeams[index].region = this.$refs['regionInput-' + id].value;
     }
   },
   async created() {

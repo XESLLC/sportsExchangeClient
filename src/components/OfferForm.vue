@@ -34,6 +34,7 @@
         <md-table v-model="filteredTradableTeamInput" md-sort="teamName" class="text-left" md-sort-order="asc">
           <md-table-row slot="md-table-row" slot-scope="{ item }">
             <md-table-cell md-label="Team" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
+            <!-- Line Below Comment out for NFL -->
             <!-- <md-table-cell v-if="item.seed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell> -->
             <md-table-cell v-if="item.region" md-label="Region" md-sort-by="region">{{ item.region }}</md-table-cell>
             <md-table-cell md-label="Quantity">

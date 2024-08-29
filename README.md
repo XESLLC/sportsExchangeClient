@@ -14,7 +14,7 @@ yarn serve
 ```
 yarn build
 ```
-
+For AWS cloudfront you need to invalidate the cache for the old files. https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide//Invalidation.html#invalidation-specifying-objects
 ### Lints and fixes files
 ```
 yarn lint
