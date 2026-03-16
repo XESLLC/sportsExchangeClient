@@ -202,7 +202,7 @@ export default {
       const index = this.tournamentTeams.findIndex(team => team.id === id);
       this.tournamentTeams[index].price = this.$refs['priceInput-' + id].value;
       this.tournamentTeams[index].seed = this.$refs['seedInput-' + id].value;
-      this.tournamentTeams[index].region = this.$refs['seedInput-' + id].value;
+      this.tournamentTeams[index].region = this.$refs['regionInput-' + id].value;
     }
   },
   async created() {
