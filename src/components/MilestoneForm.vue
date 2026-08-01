@@ -19,11 +19,18 @@
     </md-table>
 
     <md-card-actions>
+      <md-button v-if="['1','2','3'].includes(milestone.id)" :disabled="standingsWait || httpWait" @click="autoFillFromStandings" class="md-accent md-raised" :class="{ 'btn-disabled' : standingsWait || httpWait }">
+        Auto-fill from NFL Standings
+        <md-progress-spinner v-if="standingsWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
+      </md-button>
       <md-button :disabled="httpWait" @click="saveMilestoneData" class="md-primary md-raised" :class="{ 'btn-disabled' : httpWait }">
         Save Milestone Data
         <md-progress-spinner v-if="httpWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
       </md-button>
     </md-card-actions>
+    <div v-if="standingsInfo" class="standings-info text-center">
+      {{standingsInfo}}
+    </div>
     <div v-if="serverError" class="alert-error text-center">
       {{serverError}}
       <span @click="serverError = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
@@ -45,7 +52,9 @@ export default {
       inputError: null,
       tournamentTeamData: null,
       serverError: null,
-      httpWait: false
+      httpWait: false,
+      standingsWait: false,
+      standingsInfo: null
     }
   },
   props: {
@@ -165,9 +174,150 @@ export default {
         }
       }
     },
-    async saveMilestoneData() {
+    async autoFillFromStandings() {
+      this.standingsWait = true;
+      this.standingsInfo = null;
+      this.serverError = null;
+      try {
+        if (this.milestone.id === '1') {
+          await this.autoFillRegularSeason();
+        } else {
+          await this.autoFillFlatBonusMilestone();
+        }
+      } catch(err) {
+        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
+          this.serverError = err.graphQLErrors[0].message;
+        } else {
+          this.serverError = "Failed to fetch NFL standings";
+        }
+      }
+      this.standingsWait = false;
+    },
+    async autoFillRegularSeason() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query PreviewRegularSeasonDividends($tournamentId: ID!) {
+            previewRegularSeasonDividends(tournamentId: $tournamentId) {
+              totalPoolInvested
+              totalLeagueWins
+              perWinRate
+              unmatchedTeamNames
+              teams {
+                tournamentTeamId
+                matched
+                wins
+                losses
+                ties
+                dividendPrice
+              }
+            }
+          }
+        `,
+        variables: {
+          tournamentId: this.tournamentId
+        }
+      });
+
+      const preview = response.data.previewRegularSeasonDividends;
+      const previewByTournamentTeamId = new Map(
+        preview.teams.map(team => [team.tournamentTeamId, team])
+      );
+
+      // Populate the existing input fields so the admin can review/edit
+      // before hitting Save - nothing is written to the DB by this step.
+      this.tournamentTeamData = this.tournamentTeamData.map((team) => {
+        const teamPreview = previewByTournamentTeamId.get(team.id);
+        if (!teamPreview) { return team; }
+
+        return {
+          ...team,
+          milestoneInput: {
+            ...team.milestoneInput,
+            wins: teamPreview.wins,
+            losses: teamPreview.losses,
+            ties: teamPreview.ties,
+            dividendPrice: teamPreview.dividendPrice
+          }
+        };
+      });
+
+      let info = `Pulled live NFL standings. Pool: $${preview.totalPoolInvested.toFixed(2)}, ` +
+        `${preview.totalLeagueWins} total league wins, $${preview.perWinRate.toFixed(2)}/win. ` +
+        `Review below, then click Save.`;
+      if (preview.unmatchedTeamNames.length > 0) {
+        info += ` Could not match: ${preview.unmatchedTeamNames.join(', ')} - left unchanged, please fill in manually.`;
+      }
+      this.standingsInfo = info;
+    },
+    async autoFillFlatBonusMilestone() {
+      // Milestone 2 = Division Title, Milestone 3 = Conf #1 Seed.
+      // Same shape of response for both, just a different query/detection rule server-side.
+      const queryName = this.milestone.id === '2' ? 'previewDivisionTitleDividends' : 'previewConfSeed1Dividends';
+
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query PreviewFlatBonus($tournamentId: ID!) {
+            ${queryName}(tournamentId: $tournamentId) {
+              totalPoolInvested
+              poolPercent
+              flatBonus
+              unmatchedTeamNames
+              teams {
+                tournamentTeamId
+                matched
+                achieved
+                dividendPrice
+              }
+            }
+          }
+        `,
+        variables: {
+          tournamentId: this.tournamentId
+        }
+      });
+
+      const preview = response.data[queryName];
+      const previewByTournamentTeamId = new Map(
+        preview.teams.map(team => [team.tournamentTeamId, team])
+      );
+
+      // Only dividendPrice is meaningful here (wins/losses/ties aren't part
+      // of this milestone) - review below, then Save same as always.
+      this.tournamentTeamData = this.tournamentTeamData.map((team) => {
+        const teamPreview = previewByTournamentTeamId.get(team.id);
+        if (!teamPreview) { return team; }
+
+        return {
+          ...team,
+          milestoneInput: {
+            ...team.milestoneInput,
+            dividendPrice: teamPreview.dividendPrice
+          }
+        };
+      });
+
+      const achievedTeamNames = this.tournamentTeamData
+        .filter(team => {
+          const teamPreview = previewByTournamentTeamId.get(team.id);
+          return teamPreview && teamPreview.achieved;
+        })
+        .map(team => team.teamName);
+
+      let info = `Pulled live NFL standings. Pool: $${preview.totalPoolInvested.toFixed(2)}, ` +
+        `${(preview.poolPercent * 100).toFixed(1)}% of pot = $${preview.flatBonus.toFixed(2)} per team that hit this milestone. ` +
+        (achievedTeamNames.length > 0
+          ? `Currently: ${achievedTeamNames.join(', ')}. `
+          : `No team currently qualifies (may be too early in the season). `) +
+        `Review below, then click Save.`;
+      if (preview.unmatchedTeamNames.length > 0) {
+        info += ` Could not match: ${preview.unmatchedTeamNames.join(', ')} - left unchanged, please fill in manually.`;
+      }
+      this.standingsInfo = info;
+    },
       this.httpWait = true;
-      for(let team of this.tournamentTeamData) {
+      const savePromises = this.tournamentTeamData.map((team) => {
         const parsedMilestoneInput = {
           milestoneId: team.milestoneInput.milestoneId,
           milestoneName: team.milestoneInput.milestoneName,
@@ -180,32 +330,36 @@ export default {
           id: team.id,
           milestoneInput: parsedMilestoneInput
         }
-        try {
-          await apolloClient.mutate({
+        return apolloClient.mutate({
           fetchPolicy: 'no-cache',
-            mutation: gql`
-              mutation createOrUpdateMilestoneData($input: TournamentTeamMilestoneInput!) {
-                createOrUpdateMilestoneData(input: $input) {
-                  id,
-                  name
-                }
+          mutation: gql`
+            mutation createOrUpdateMilestoneData($input: TournamentTeamMilestoneInput!) {
+              createOrUpdateMilestoneData(input: $input) {
+                id,
+                name
               }
-            `,
-            variables: {
-              input
             }
-          });
-
-        } catch(err) {
-          if(err.graphQLErrors && err.graphQLErrors.length > 0) {
-            this.serverError = err.graphQLErrors[0].message;
-          } else {
-            this.serverError = "Server Error";
+          `,
+          variables: {
+            input
           }
-          this.httpWait = false;
-          return err;
+        });
+      });
+
+      try {
+        // Fired concurrently instead of one-at-a-time - same 32 mutations,
+        // but they no longer wait on each other's network round-trip.
+        await Promise.all(savePromises);
+      } catch(err) {
+        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
+          this.serverError = err.graphQLErrors[0].message;
+        } else {
+          this.serverError = "Server Error";
         }
+        this.httpWait = false;
+        return err;
       }
+      this.httpWait = false;
       this.successCb();
     },
     updateInput(id) {
@@ -236,5 +390,11 @@ export default {
 
   .wins-input {
     width: 60px;
+  }
+
+  .standings-info {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #555;
   }
 </style>
