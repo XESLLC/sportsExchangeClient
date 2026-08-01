@@ -10,6 +10,7 @@
         <md-tab md-label="Detail" @click="showContent('detail')"></md-tab>
         <md-tab md-label="IPO" @click="showContent('ipo')"></md-tab>
         <md-tab md-label="Offers"></md-tab>
+        <md-tab md-label="Message Board" @click="showContent('messageBoard')"></md-tab>
       </md-tabs>
 
       <md-card-content>
@@ -25,6 +26,7 @@
         <portfolio-summary v-if="contentToShow === 'summary'"></portfolio-summary>
         <portfolio-detail v-if="contentToShow === 'detail'" :entry-id="entryId"></portfolio-detail>
         <ipo v-if="contentToShow === 'ipo'" :tournament-id="tournamentId" :entry-id="entryId"></ipo>
+        <message-board v-if="contentToShow === 'messageBoard'" :tournament-id="tournamentId"></message-board>
       </md-card-content>
     </md-card>
   </div>
@@ -36,9 +38,10 @@ import gql from 'graphql-tag';
 import PortfolioSummary from './PortfolioSummary.vue';
 import PortfolioDetail from './PortfolioDetail.vue';
 import Ipo from './Ipo.vue';
+import MessageBoard from './MessageBoard.vue';
 
 export default {
-  components: { PortfolioSummary, PortfolioDetail, Ipo },
+  components: { PortfolioSummary, PortfolioDetail, Ipo, MessageBoard },
   name: "Entry",
   data() {
     return {
