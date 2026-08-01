@@ -82,7 +82,8 @@ export default {
   watch: {
     async auth(val) {
       if(val && !val.loading) {
-        const rolesList = this.$auth.user['https://sports-exchange/roles'];
+        const user = this.$auth.user;
+        const rolesList = (user && user['https://sports-exchange/roles']) || [];
         this.isAdmin = rolesList.includes('ADMIN');
         await this.determineRouteRedirect();
       }
@@ -107,7 +108,8 @@ export default {
   async created() {
     if(this.$auth) {
       setTimeout(() => {
-        const rolesList = this.$auth.user['https://sports-exchange/roles'];
+        const user = this.$auth.user;
+        const rolesList = (user && user['https://sports-exchange/roles']) || [];
         this.isAdmin = rolesList.includes('ADMIN');
         this.isPageReady = true;
       }, 1000);

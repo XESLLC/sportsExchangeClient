@@ -142,9 +142,12 @@ const router = new Router({
   ]
 });
 
-// This is important to make sure localhost is selected during development to ensure we arent using the production environment
-const httpLink = createHttpLink({ uri: "https://guyaafzm5l.execute-api.us-west-2.amazonaws.com/dev/graphql" });
-// const httpLink = createHttpLink({ uri: "http://localhost:4000/graphql" });
+const IS_LOCAL = window.location.hostname === 'localhost';
+const API_URL = IS_LOCAL
+  ? 'http://localhost:4000/graphql'
+  : 'https://guyaafzm5l.execute-api.us-west-2.amazonaws.com/dev/graphql';
+
+const httpLink = createHttpLink({ uri: API_URL });
 const middlewareLink = setContext(async () => {
   const token = sessionStorage.getItem('sports-exchange.token')
   return {

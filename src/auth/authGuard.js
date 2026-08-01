@@ -1,6 +1,16 @@
 import { getInstance } from ".";
 
+const IS_LOCAL = window.location.hostname === 'localhost';
+
 export const authGuard = (to, from, next) => {
+  // Local dev: skip Auth0 entirely, use stubbed credentials matching the
+  // local backend's LOCAL_DEV_USER so all GraphQL queries work.
+  if (IS_LOCAL) {
+    sessionStorage.setItem('sports-exchange.token', 'local-dev-token');
+    sessionStorage.setItem('sports-exchange.email', 'exigentemail@gmail.com');
+    return next();
+  }
+
   const authService = getInstance();
 
   const fn = async() => {
