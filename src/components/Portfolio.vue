@@ -6,6 +6,7 @@
     <div v-else>
       <md-card>
         <md-card-header>
+          <breadcrumbs :crumbs="breadcrumbCrumbs"></breadcrumbs>
           <div class="md-title">Portfolio</div>
         </md-card-header>
 
@@ -19,14 +20,8 @@
         <md-card-content>
           <div class="md-layout">
             <div class="md-layout-item"></div>
-            <div class="md-layout-item md-large-size-33 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
-              <h3 class="label">Select an Entry</h3>
-              <div class="custom-select-wrapper">
-                <select class="custom-select" name="basic-dropdown" v-model="selectedEntry">
-                  <option :value="null">Select Entry</option>
-                  <option v-for="entry in entries" :key="entry.id" :value="entry">{{entry.name}}</option>
-                </select>
-              </div>
+            <div class="md-layout-item md-large-size-50 md-medium-size-75 md-small-size-100">
+              <entry-selector :entries="entries" v-model="selectedEntry"></entry-selector>
             </div>
             <div class="md-layout-item"></div>
           </div>
@@ -71,9 +66,12 @@ import gql from 'graphql-tag';
 import PortfolioSummary from './PortfolioSummary.vue';
 import PortfolioDetail from './PortfolioDetail.vue';
 import PortfolioRankings from './PortfolioRankings.vue';
+import EntrySelector from './EntrySelector.vue';
+import Breadcrumbs from './Breadcrumbs.vue';
+import { getLastEntryId, setLastEntryId } from '../utils/lastEntry';
 
 export default {
-  components: { PortfolioSummary, PortfolioDetail, PortfolioRankings },
+  components: { PortfolioSummary, PortfolioDetail, PortfolioRankings, EntrySelector, Breadcrumbs },
   name: "Portfolio",
   data() {
     return {
@@ -82,7 +80,8 @@ export default {
       selectedEntry: null,
       contentToShow: 'detail',
       tournamentTeamData: [],
-      maxLengthOfMilestoneData: 0
+      maxLengthOfMilestoneData: 0,
+      leagueName: null
     }
   },
   props: {
@@ -96,8 +95,31 @@ export default {
   watch: {
     async selectedEntry(val) {
       if(val) {
+        setLastEntryId(val.id);
+        this.leagueName = null;
+        await this.fetchLeagueName();
         await this.fetchPayoutData();
       }
+    }
+  },
+  computed: {
+    breadcrumbCrumbs() {
+      const crumbs = [{ label: 'Home', to: { name: 'Home' } }];
+      if(!this.selectedEntry) {
+        crumbs.push({ label: 'Portfolio' });
+        return crumbs;
+      }
+      const leagueId = this.selectedEntry.tournament && this.selectedEntry.tournament.leagueId;
+      if(this.leagueName && leagueId) {
+        crumbs.push({ label: this.leagueName, to: { name: 'League', params: { leagueId } } });
+      }
+      if(this.selectedEntry.tournament && this.selectedEntry.tournament.name) {
+        // Tournament management is admin-only elsewhere in the app, so this
+        // step is informational text, not a link, from a regular user's view.
+        crumbs.push({ label: this.selectedEntry.tournament.name });
+      }
+      crumbs.push({ label: this.selectedEntry.name });
+      return crumbs;
     }
   },
   methods: {
@@ -152,6 +174,30 @@ export default {
         return max;
       }, 0);
     },
+    async fetchLeagueName() {
+      const leagueId = this.selectedEntry && this.selectedEntry.tournament && this.selectedEntry.tournament.leagueId;
+      if(!leagueId) { return; }
+      try {
+        const response = await apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query League($id: ID!) {
+              league(id: $id) {
+                id,
+                name
+              }
+            }
+          `,
+          variables: {
+            id: leagueId
+          }
+        });
+        this.leagueName = response.data.league && response.data.league.name;
+      } catch(err) {
+        // Breadcrumb degrades gracefully to Tournament/Entry name if this fails.
+        this.leagueName = null;
+      }
+    },
     async fetchUserEntries() {
       const email = sessionStorage.getItem('sports-exchange.email');
       const response = await apolloClient.query({
@@ -163,6 +209,8 @@ export default {
               name,
               tournamentId,
               tournament {
+                name,
+                leagueId,
                 isIpoOpen,
                 isActive,
                 masterSheetUpload,
@@ -185,6 +233,11 @@ export default {
       if(!this.entryId) {
         if(this.entries.length === 1) {
           this.selectedEntry = this.entries[0];
+        } else {
+          const lastEntryId = getLastEntryId();
+          if(lastEntryId) {
+            this.selectedEntry = this.entries.find(entry => entry.id === lastEntryId) || null;
+          }
         }
       } else {
         this.selectedEntry = this.entries.find(entry => entry.id === this.entryId);
