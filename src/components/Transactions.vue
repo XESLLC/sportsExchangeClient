@@ -6,6 +6,7 @@
     <div v-else>
       <md-card>
         <md-card-header>
+          <breadcrumbs :crumbs="breadcrumbCrumbs"></breadcrumbs>
           <div class="md-title">Transactions</div>
         </md-card-header>
         <div v-if="successMessage" class="alert-padding alert-success">
@@ -26,14 +27,8 @@
         <md-card-content>
           <div class="md-layout">
             <div class="md-layout-item"></div>
-            <div class="md-layout-item md-large-size-33 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
-              <h3 class="label">Select an Entry</h3>
-              <div class="custom-select-wrapper">
-                <select class="custom-select" name="basic-dropdown" v-model="selectedEntry">
-                  <option :value="null">Select Entry</option>
-                  <option v-for="entry in entries" :key="entry.id" :value="entry">{{entry.name}}</option>
-                </select>
-              </div>
+            <div class="md-layout-item md-large-size-50 md-medium-size-75 md-small-size-100">
+              <entry-selector :entries="entries" v-model="selectedEntry"></entry-selector>
             </div>
             <div class="md-layout-item"></div>
           </div>
@@ -66,9 +61,12 @@ import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 import Ipo from './Ipo.vue';
 import Offers from './Offers.vue';
+import EntrySelector from './EntrySelector.vue';
+import Breadcrumbs from './Breadcrumbs.vue';
+import { getLastEntryId, setLastEntryId } from '../utils/lastEntry';
 
 export default {
-  components: { Ipo, Offers },
+  components: { Ipo, Offers, EntrySelector, Breadcrumbs },
   name: "Transactions",
   data() {
     return {
@@ -79,7 +77,10 @@ export default {
       isTournamentIpoOpen: false,
       serverError: null,
       ipoBudget: null,
-      secondaryMarketBudget: null
+      secondaryMarketBudget: null,
+      tournamentName: null,
+      leagueId: null,
+      leagueName: null
     }
   },
   props: {
@@ -93,6 +94,7 @@ export default {
   watch: {
     async selectedEntry(newVal, oldVal) {
       if(newVal && newVal !== oldVal) {
+        setLastEntryId(newVal.id);
         // TODO get tournament data to display isIpoOpen and maxBudget info
         try {
           const response = await apolloClient.query({
@@ -120,6 +122,10 @@ export default {
           this.isTournamentIpoOpen = tournamentData.isIpoOpen;
           this.ipoBudget = tournamentData.settings.ipoBudget;
           this.secondaryMarketBudget = tournamentData.settings.secondaryMarketBudget;
+          this.tournamentName = tournamentData.name;
+          this.leagueId = tournamentData.leagueId;
+          this.leagueName = null;
+          await this.fetchLeagueName();
           if(this.isTournamentIpoOpen) {
             this.contentToShow = 'ipo';
           } else {
@@ -136,7 +142,49 @@ export default {
       }
     }
   },
+  computed: {
+    breadcrumbCrumbs() {
+      const crumbs = [{ label: 'Home', to: { name: 'Home' } }];
+      if(!this.selectedEntry) {
+        crumbs.push({ label: 'IPO/Offers' });
+        return crumbs;
+      }
+      if(this.leagueName && this.leagueId) {
+        crumbs.push({ label: this.leagueName, to: { name: 'League', params: { leagueId: this.leagueId } } });
+      }
+      if(this.tournamentName) {
+        // Tournament management is admin-only elsewhere in the app, so this
+        // step is informational text, not a link, from a regular user's view.
+        crumbs.push({ label: this.tournamentName });
+      }
+      crumbs.push({ label: this.selectedEntry.name });
+      return crumbs;
+    }
+  },
   methods: {
+    async fetchLeagueName() {
+      if(!this.leagueId) { return; }
+      try {
+        const response = await apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query League($id: ID!) {
+              league(id: $id) {
+                id,
+                name
+              }
+            }
+          `,
+          variables: {
+            id: this.leagueId
+          }
+        });
+        this.leagueName = response.data.league && response.data.league.name;
+      } catch(err) {
+        // Breadcrumb degrades gracefully to Tournament/Entry name if this fails.
+        this.leagueName = null;
+      }
+    },
     async fetchUserEntries() {
       const email = sessionStorage.getItem('sports-exchange.email');
       const response = await apolloClient.query({
@@ -148,6 +196,7 @@ export default {
               name,
               tournamentId,
               tournament {
+                name,
                 isActive,
                 masterSheetUpload,
                 pricingSheetUpload,
@@ -172,6 +221,11 @@ export default {
       if(!this.entryId) {
         if(this.entries.length === 1) {
           this.selectedEntry = this.entries[0];
+        } else {
+          const lastEntryId = getLastEntryId();
+          if(lastEntryId) {
+            this.selectedEntry = this.entries.find(entry => entry.id === lastEntryId) || null;
+          }
         }
       } else {
         this.selectedEntry = this.entries.find(entry => entry.id === this.entryId);
@@ -197,29 +251,6 @@ export default {
 </script>
 
 <style scoped>
-.custom-select {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid black;
-  width: 100%;
-}
-
-.custom-select select {
-  padding-left: 10px;
-  background-color: transparent;
-  font-size: 18px;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-}
-
-.custom-select-wrapper {
-  position: relative;
-  user-select: none;
-  width: 100%;
-}
-
 .ipo-closed-container {
   padding-top: 30px;
 }
