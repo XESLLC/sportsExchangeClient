@@ -12,6 +12,10 @@
         {{successMessage}}
         <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
       </div>
+      <div v-if="serverError" class="alert-error">
+        {{serverError}}
+        <span @click="serverError = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
+      </div>
       <md-card-header>
         <div class="md-title">{{tournament.name}}</div>
       </md-card-header>
@@ -64,6 +68,21 @@
             </md-table-toolbar>
             <md-table-row slot="md-table-row" slot-scope="{ item }">
               <md-table-cell md-label="Name" md-sort-by="name">{{ item.name }}</md-table-cell>
+              <md-table-cell md-label="% of Pot">
+                <input
+                  :value="milestonePercentInputs[item.id]"
+                  @input="milestonePercentInputs[item.id] = $event.target.value"
+                  class="pool-percent-input"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                >%
+                <span @click="saveMilestonePoolPercent(item)" title="Save % of pot">
+                  <md-icon class="fas fa-save link"></md-icon>
+                </span>
+                <span v-if="savingMilestonePercent[item.id]" class="pool-percent-saved">Saved</span>
+              </md-table-cell>
               <md-table-cell md-label="Edit/Enter Data">
                 <span @click="editMilestone(item)"><md-icon class="fas fa-edit link"></md-icon></span>
               </md-table-cell>
@@ -120,6 +139,10 @@ import MilestoneForm from './MilestoneForm.vue';
 import EliminateTeamsForm from './EliminateTeamsForm.vue';
 import MasterSheet from './MasterSheet.vue';
 
+function round1(value) {
+  return Math.round(value * 10) / 10;
+}
+
 export default {
   components: { TournamentTeamForm, MilestoneForm, EliminateTeamsForm, MasterSheet },
   name: "Tournament",
@@ -131,7 +154,10 @@ export default {
       tournament: null,
       entries: null,
       successMessage: null,
+      serverError: null,
       userTournamentEntry: null,
+      milestonePercentInputs: {},
+      savingMilestonePercent: {},
       attrs: {
         currentSelectedView: this.selectedView,
         currentSelectedEntry: this.selectedEntry
@@ -329,6 +355,44 @@ export default {
     editMilestone(milestone) {
       this.selectedMilestone = milestone;
       this.showEditMilestoneModal = true;
+    },
+    async saveMilestonePoolPercent(milestone) {
+      const rawValue = parseFloat(this.milestonePercentInputs[milestone.id]);
+      if (isNaN(rawValue) || rawValue < 0 || rawValue > 100) {
+        this.serverError = "% of pot must be a number between 0 and 100";
+        return;
+      }
+      const poolPercent = rawValue / 100;
+
+      try {
+        await apolloClient.mutate({
+          fetchPolicy: 'no-cache',
+          mutation: gql`
+            mutation updateMilestonePoolPercent($tournamentId: ID!, $milestoneId: String!, $poolPercent: Float!) {
+              updateMilestonePoolPercent(tournamentId: $tournamentId, milestoneId: $milestoneId, poolPercent: $poolPercent) {
+                id
+              }
+            }
+          `,
+          variables: {
+            tournamentId: this.tournamentId,
+            milestoneId: String(milestone.id),
+            poolPercent
+          }
+        });
+
+        milestone.poolPercent = poolPercent;
+        this.savingMilestonePercent = { ...this.savingMilestonePercent, [milestone.id]: true };
+        setTimeout(() => {
+          this.savingMilestonePercent = { ...this.savingMilestonePercent, [milestone.id]: false };
+        }, 2000);
+      } catch(err) {
+        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
+          this.serverError = err.graphQLErrors[0].message;
+        } else {
+          this.serverError = "Failed to save % of pot";
+        }
+      }
     },
     async fetchTournamentTeams(entryStocks) {
       return await Promise.all(
@@ -538,7 +602,8 @@ export default {
               secondaryMarketBudget,
               milestones {
                 id,
-                name
+                name,
+                poolPercent
               }
             }
           }
@@ -552,6 +617,11 @@ export default {
     this.tournament = response.data.tournament;
     this.isIpoOpenInput = this.tournament.isIpoOpen;
     this.isTournamentActiveInput = this.tournament.isActive;
+    (this.tournament.settings.milestones || []).forEach((milestone) => {
+      this.milestonePercentInputs[milestone.id] = milestone.poolPercent != null
+        ? round1(milestone.poolPercent * 100)
+        : 0;
+    });
 
     await this.fetchTournamentEntries();
     await this.fetchEntryUsers();
@@ -578,5 +648,15 @@ export default {
 
 .master-sheet-content {
   max-width: 100%;
+}
+
+.pool-percent-input {
+  width: 60px;
+}
+
+.pool-percent-saved {
+  color: green;
+  font-size: 0.85em;
+  margin-left: 6px;
 }
 </style>
