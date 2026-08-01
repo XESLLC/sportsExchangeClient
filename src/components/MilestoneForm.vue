@@ -316,6 +316,7 @@ export default {
       }
       this.standingsInfo = info;
     },
+    async saveMilestoneData() {
       this.httpWait = true;
       const savePromises = this.tournamentTeamData.map((team) => {
         const parsedMilestoneInput = {
