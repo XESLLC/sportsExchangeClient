@@ -15,6 +15,7 @@
           <md-tab md-label="Investment Metrics" @click="showContent('summary')"></md-tab>
           <md-tab md-label="Dividend Payouts" @click="showContent('payouts')"></md-tab>
           <md-tab md-label="Rankings" @click="showContent('rankings')"></md-tab>
+          <md-tab md-label="Owners" @click="showContent('owners')"></md-tab>
         </md-tabs>
 
         <md-card-content>
@@ -53,6 +54,7 @@
               </md-table>
             </div>
             <portfolio-rankings v-if="contentToShow === 'rankings'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-rankings>
+            <entry-owners v-if="contentToShow === 'owners'" :entry-id="selectedEntry.id"></entry-owners>
           </div>
         </md-card-content>
       </md-card>
@@ -68,10 +70,11 @@ import PortfolioDetail from './PortfolioDetail.vue';
 import PortfolioRankings from './PortfolioRankings.vue';
 import EntrySelector from './EntrySelector.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
+import EntryOwners from './EntryOwners.vue';
 import { getLastEntryId, setLastEntryId } from '../utils/lastEntry';
 
 export default {
-  components: { PortfolioSummary, PortfolioDetail, PortfolioRankings, EntrySelector, Breadcrumbs },
+  components: { PortfolioSummary, PortfolioDetail, PortfolioRankings, EntrySelector, Breadcrumbs, EntryOwners },
   name: "Portfolio",
   data() {
     return {
