@@ -112,7 +112,7 @@ export default {
         const rolesList = (user && user['https://sports-exchange/roles']) || [];
         this.isAdmin = rolesList.includes('ADMIN');
         this.isPageReady = true;
-      }, 1000);
+      }, 100);
     }
   }
 }
