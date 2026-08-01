@@ -39,6 +39,9 @@
               <span class="link decorated-link" @click="showEditTournamentTeamsModal = true">Edit Tournament Teams IPO</span>
             </div>
             <div>
+              <span class="link decorated-link" @click="showSetupTournamentTeamsModal = true">Add/Set Up Teams</span>
+            </div>
+            <div>
               <span class="link decorated-link" @click="showMarkEliminatedTeamsModal = true">Mark Eliminated Teams</span>
             </div>
           </div>
@@ -113,6 +116,13 @@
       </md-dialog-content>
     </md-dialog>
 
+    <md-dialog :md-active.sync="showSetupTournamentTeamsModal" :md-fullscreen="true">
+      <md-dialog-title>Add/Set Up Teams - {{tournament.name}}</md-dialog-title>
+      <md-dialog-content>
+        <tournament-team-setup-form :success-cb="setupTournamentTeamsSuccessCb" :league-id="leagueId" :tournament-id="tournamentId"></tournament-team-setup-form>
+      </md-dialog-content>
+    </md-dialog>
+
     <md-dialog :md-active.sync="showEditMilestoneModal" :md-fullscreen="false">
       <md-dialog-title v-if="selectedMilestone">Milestone - {{selectedMilestone.name}}</md-dialog-title>
       <md-dialog-content>
@@ -145,6 +155,7 @@
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 import TournamentTeamForm from './TournamentTeamForm.vue';
+import TournamentTeamSetupForm from './TournamentTeamSetupForm.vue';
 import MilestoneForm from './MilestoneForm.vue';
 import EliminateTeamsForm from './EliminateTeamsForm.vue';
 import MasterSheet from './MasterSheet.vue';
@@ -155,12 +166,13 @@ function round1(value) {
 }
 
 export default {
-  components: { TournamentTeamForm, MilestoneForm, EliminateTeamsForm, MasterSheet, EmailBlastForm },
+  components: { TournamentTeamForm, TournamentTeamSetupForm, MilestoneForm, EliminateTeamsForm, MasterSheet, EmailBlastForm },
   name: "Tournament",
   data() {
     return {
       isPageReady: false,
       showEditTournamentTeamsModal: false,
+      showSetupTournamentTeamsModal: false,
       showEditMilestoneModal: false,
       tournament: null,
       entries: null,
@@ -578,6 +590,13 @@ export default {
       await this.fetchEntryUsers();
       await this.getDividendTotals();
       this.successMessage = "Successfully editted teams for tournament!";
+    },
+    async setupTournamentTeamsSuccessCb() {
+      this.showSetupTournamentTeamsModal = false;
+      await this.fetchTournamentEntries();
+      await this.fetchEntryUsers();
+      await this.getDividendTotals();
+      this.successMessage = "Successfully saved tournament teams!";
     },
     async editMilestoneCb() {
       this.showEditMilestoneModal = false;
