@@ -61,6 +61,16 @@
             </md-table-row>
           </md-table>
         </div>
+        <div class="email-blast-section">
+          <md-button @click="showEmailForm = !showEmailForm" class="md-accent md-raised">
+            {{ showEmailForm ? 'Hide Email Form' : 'Email Participants' }}
+          </md-button>
+          <email-blast-form
+            v-if="showEmailForm"
+            :tournament-id="tournamentId"
+            :recipient-count="entries ? entries.length : 0"
+          ></email-blast-form>
+        </div>
         <div>
           <md-table class="text-left" md-card v-model="tournament.settings.milestones">
             <md-table-toolbar>
@@ -138,13 +148,14 @@ import TournamentTeamForm from './TournamentTeamForm.vue';
 import MilestoneForm from './MilestoneForm.vue';
 import EliminateTeamsForm from './EliminateTeamsForm.vue';
 import MasterSheet from './MasterSheet.vue';
+import EmailBlastForm from './EmailBlastForm.vue';
 
 function round1(value) {
   return Math.round(value * 10) / 10;
 }
 
 export default {
-  components: { TournamentTeamForm, MilestoneForm, EliminateTeamsForm, MasterSheet },
+  components: { TournamentTeamForm, MilestoneForm, EliminateTeamsForm, MasterSheet, EmailBlastForm },
   name: "Tournament",
   data() {
     return {
@@ -173,7 +184,8 @@ export default {
       masterSheetEntryStockData: null,
       showMasterSheetModal: false,
       transactions: null,
-      masterSheetTransactionData: null
+      masterSheetTransactionData: null,
+      showEmailForm: false
     }
   },
   computed: {
