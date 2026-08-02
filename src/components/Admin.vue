@@ -211,7 +211,8 @@ export default {
       this.allUsers = response.data.users;
     },
     async toggleAdmin(user) {
-      const newValue = !user.isAdmin;
+      // v-model already flipped user.isAdmin — use that as the new value
+      const newValue = user.isAdmin;
       await apolloClient.mutate({
         mutation: gql`
           mutation SetUserAdmin($email: String!, $isAdmin: Boolean!) {
@@ -223,7 +224,6 @@ export default {
         `,
         variables: { email: user.email, isAdmin: newValue }
       });
-      user.isAdmin = newValue;
       this.successMessage = `${user.email} is now ${newValue ? 'an Admin' : 'a regular user'}.`;
     }
   },
