@@ -44,6 +44,7 @@ import Tournament from './components/Tournament';
 import Entry from './components/Entry';
 import Exchanges from './components/Exchanges';
 import EditEntryData from './components/EditEntryData';
+import TournamentHome from './components/TournamentHome';
 
 const router = new Router({
   mode: 'history',
@@ -136,6 +137,13 @@ const router = new Router({
       path: '/edit-entry-data',
       name: 'EditEntryData',
       component: EditEntryData,
+      props: true,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/tournament-home/:tournamentId',
+      name: 'TournamentHome',
+      component: TournamentHome,
       props: true,
       beforeEnter: authGuard
     }

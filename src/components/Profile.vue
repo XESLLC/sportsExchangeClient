@@ -21,8 +21,13 @@
           <div>Username: <span v-if="!isEditingMode">{{user.username}}</span> <input v-else v-model="userInput.username" /></div>
           <div v-if="!isEditingMode">Password: {{placeholderPassword}}</div>
           <!-- <div>Balance: {{user.cash | toCurrency}}</div> -->
-          <div v-if="!isEditingMode">Entries/Exchanges: 
+          <div v-if="!isEditingMode">Entries/Exchanges:
             <span v-for="(entry, index) in userEntries" :key="entry.id" class="link" @click="goToPortfolio(entry)">{{entry.name}}<span v-if="userEntries.length > 1 && index !== userEntries.length -1" class="no-link">, </span></span>
+          </div>
+          <div class="notification-pref">
+            <md-switch v-model="userInput.notifyOnMessageBoard" @change="saveNotificationPref" class="md-primary">
+              Email me when a new message board thread is posted
+            </md-switch>
           </div>
         </div>
       </md-card-content>
@@ -68,7 +73,8 @@ export default {
               email,
               cash,
               username,
-              phoneNumber
+              phoneNumber,
+              notifyOnMessageBoard
             }
           }
         `,
@@ -83,6 +89,7 @@ export default {
       this.userInput.lastname = this.user.lastname;
       this.userInput.phoneNumber = this.user.phoneNumber;
       this.userInput.username = this.user.username;
+      this.userInput.notifyOnMessageBoard = !!this.user.notifyOnMessageBoard;
     },
     async fetchUserEntries() {
       const response = await apolloClient.query({
@@ -125,6 +132,9 @@ export default {
       this.isEditingMode = false;
       this.successMessage = "Successfully updated user profile!";
     },
+    async saveNotificationPref() {
+      await this.updateUser();
+    },
     // async triggerResetPassword() {
     //   // TODO check if this is successful in deployed app
     //   const data = {
@@ -155,7 +165,8 @@ export default {
               email,
               cash,
               username,
-              phoneNumber
+              phoneNumber,
+              notifyOnMessageBoard
             }
           }
         `,
@@ -170,6 +181,7 @@ export default {
       this.userInput.lastname = this.user.lastname;
       this.userInput.phoneNumber = this.user.phoneNumber;
       this.userInput.username = this.user.username;
+      this.userInput.notifyOnMessageBoard = !!this.user.notifyOnMessageBoard;
     },
   },
   async created() {
@@ -196,6 +208,10 @@ export default {
 .no-link {
   cursor: default;
   color: black;
+}
+
+.notification-pref {
+  margin-top: 12px;
 }
 
 @media screen and (max-width: 820px){

@@ -13,7 +13,9 @@
         <div v-if="activeTournaments && activeTournaments.length > 0">
           <md-table v-model="activeTournaments" class="web-table text-left">
             <md-table-row slot="md-table-row" slot-scope="{ item }">
-              <md-table-cell md-label="Tournament Name" md-sort-by="name">{{ item.leagueName }} - {{ item.name }}</md-table-cell>
+              <md-table-cell md-label="Tournament Name" md-sort-by="name">
+                <span class="tournament-link link" @click="goToTournamentHome(item.id)">{{ item.leagueName }} - {{ item.name }}</span>
+              </md-table-cell>
               <md-table-cell v-if="!isAdmin" md-label="My Entries">
                 <div v-if="userHasTournamentEntries(item.id)">
                   <md-button class="md-raised md-secondary" @click="goToEntry(userHasTournamentEntries(item.id))">View Entry</md-button>
@@ -31,7 +33,7 @@
               <md-table-cell>
                 <div class="mobile-row">
                   <div class="mobile-header">Tournament Name</div>
-                  <div>{{tournament.name}}</div>
+                  <div class="tournament-link link" @click="goToTournamentHome(tournament.id)">{{tournament.name}}</div>
                 </div>
 
                 <div class="mobile-row" v-if="userHasTournamentEntries(tournament.id)">
@@ -126,12 +128,15 @@ export default {
       this.activeTournaments = this.tournaments.filter(tournament => tournament.isActive);
     },
     goToEntry(entryId) {
-      this.$router.push({ 
+      this.$router.push({
         name: "Portfolio",
         params: {
           entryId
         }
       });
+    },
+    goToTournamentHome(tournamentId) {
+      this.$router.push({ name: 'TournamentHome', params: { tournamentId } });
     },
     goToTournament(tournamentId) {
       if(this.isAdmin) {
@@ -249,6 +254,12 @@ export default {
 
 .mobile-header {
   font-weight: bold;
+}
+
+.tournament-link {
+  font-weight: bold;
+  color: #487233;
+  text-decoration: underline;
 }
 
 .mobile-row {

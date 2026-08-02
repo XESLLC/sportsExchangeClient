@@ -1,7 +1,7 @@
 <template>
   <div class="message-board">
     <div v-if="serverError" class="alert-error text-center">
-      {{serverError}}
+      {{ serverError }}
       <span @click="serverError = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
     </div>
 
@@ -10,32 +10,94 @@
     </div>
 
     <div v-else>
-      <div class="message-list">
-        <div v-if="messages.length < 1" class="text-center no-messages">
-          No posts yet - be the first to post.
+      <!-- Thread list view -->
+      <div v-if="!activeThread">
+        <div class="board-actions">
+          <md-button class="md-primary md-raised" @click="showNewThreadForm = !showNewThreadForm">
+            {{ showNewThreadForm ? 'Cancel' : 'New Thread' }}
+          </md-button>
         </div>
-        <div v-for="message in messages" :key="message.id" class="message-item">
-          <div class="message-meta">
-            <strong>{{message.authorFirstName}} {{message.authorLastName}}</strong>
-            <span v-if="message.entryName" class="message-entry-name"> ({{message.entryName}})</span>
-            <span class="message-timestamp"> - {{getReadableDate(message.createdAt)}}</span>
-            <md-icon v-if="message.notifiedByEmail" title="Emailed to all entrants" class="fas fa-envelope message-email-icon"></md-icon>
+
+        <div v-if="showNewThreadForm" class="new-thread-form">
+          <md-field>
+            <label>Title</label>
+            <md-input v-model="newThreadTitle"></md-input>
+          </md-field>
+          <md-field>
+            <label>Body</label>
+            <md-textarea v-model="newThreadBody" md-autogrow></md-textarea>
+          </md-field>
+          <md-button
+            :disabled="postWait || !newThreadTitle.trim() || !newThreadBody.trim()"
+            @click="postThread"
+            class="md-primary md-raised"
+          >
+            Post Thread
+            <md-progress-spinner v-if="postWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
+          </md-button>
+        </div>
+
+        <div v-if="threads.length === 0" class="no-threads">
+          No posts yet — start a new thread above.
+        </div>
+
+        <div v-for="thread in threads" :key="thread.id" class="thread-row link" @click="openThread(thread)">
+          <div class="thread-title">{{ thread.title }}</div>
+          <div class="thread-meta">
+            {{ thread.authorFirstName }} {{ thread.authorLastName }}
+            <span v-if="thread.entryName"> ({{ thread.entryName }})</span>
+            &middot; {{ getReadableDate(thread.createdAt) }}
+            &middot; {{ thread.replies.length }} {{ thread.replies.length === 1 ? 'reply' : 'replies' }}
           </div>
-          <div class="message-body">{{message.body}}</div>
         </div>
       </div>
 
-      <md-field class="message-input-field">
-        <label>Post a message</label>
-        <md-textarea v-model="newMessageBody" md-autogrow></md-textarea>
-      </md-field>
+      <!-- Thread detail view -->
+      <div v-else>
+        <div class="back-btn" @click="closeThread">
+          <md-icon class="fa fa-angle-left link"></md-icon>
+          <span class="link">Back to threads</span>
+        </div>
 
-      <div class="message-post-actions">
-        <md-checkbox v-model="sendEmailOnPost">Email all entrants about this post</md-checkbox>
-        <md-button :disabled="postWait || !newMessageBody.trim()" @click="postMessage" class="md-primary md-raised" :class="{ 'btn-disabled' : postWait || !newMessageBody.trim() }">
-          Post Message
-          <md-progress-spinner v-if="postWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
-        </md-button>
+        <!-- Original post -->
+        <div class="post op">
+          <div class="post-title">{{ activeThread.title }}</div>
+          <div class="post-meta">
+            {{ activeThread.authorFirstName }} {{ activeThread.authorLastName }}
+            <span v-if="activeThread.entryName"> ({{ activeThread.entryName }})</span>
+            &middot; {{ getReadableDate(activeThread.createdAt) }}
+          </div>
+          <div class="post-body">{{ activeThread.body }}</div>
+        </div>
+
+        <!-- Replies -->
+        <div v-if="activeThread.replies.length > 0" class="replies-section">
+          <div v-for="reply in activeThread.replies" :key="reply.id" class="post reply">
+            <div class="post-meta">
+              {{ reply.authorFirstName }} {{ reply.authorLastName }}
+              <span v-if="reply.entryName"> ({{ reply.entryName }})</span>
+              &middot; {{ getReadableDate(reply.createdAt) }}
+            </div>
+            <div class="post-body">{{ reply.body }}</div>
+          </div>
+        </div>
+        <div v-else class="no-replies">No replies yet.</div>
+
+        <!-- Reply form -->
+        <div class="reply-form">
+          <md-field>
+            <label>Write a reply</label>
+            <md-textarea v-model="replyBody" md-autogrow></md-textarea>
+          </md-field>
+          <md-button
+            :disabled="postWait || !replyBody.trim()"
+            @click="postReply"
+            class="md-primary md-raised"
+          >
+            Post Reply
+            <md-progress-spinner v-if="postWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
+          </md-button>
+        </div>
       </div>
     </div>
   </div>
@@ -45,14 +107,40 @@
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 
+const MESSAGES_QUERY = gql`
+  query TournamentMessages($tournamentId: ID!) {
+    tournamentMessages(tournamentId: $tournamentId) {
+      id
+      entryName
+      authorFirstName
+      authorLastName
+      title
+      body
+      notifiedByEmail
+      createdAt
+      replies {
+        id
+        entryName
+        authorFirstName
+        authorLastName
+        body
+        createdAt
+      }
+    }
+  }
+`;
+
 export default {
   name: "MessageBoard",
   data() {
     return {
       isPageReady: false,
-      messages: [],
-      newMessageBody: '',
-      sendEmailOnPost: false,
+      threads: [],
+      activeThread: null,
+      showNewThreadForm: false,
+      newThreadTitle: '',
+      newThreadBody: '',
+      replyBody: '',
       postWait: false,
       serverError: null
     }
@@ -63,63 +151,67 @@ export default {
     }
   },
   methods: {
-    async fetchMessages() {
+    async fetchThreads() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
-        query: gql`
-          query TournamentMessages($tournamentId: ID!) {
-            tournamentMessages(tournamentId: $tournamentId) {
-              id,
-              entryName,
-              authorFirstName,
-              authorLastName,
-              body,
-              notifiedByEmail,
-              createdAt
-            }
-          }
-        `,
-        variables: {
-          tournamentId: this.tournamentId
-        }
+        query: MESSAGES_QUERY,
+        variables: { tournamentId: this.tournamentId }
       });
-
-      this.messages = response.data.tournamentMessages;
+      this.threads = [...response.data.tournamentMessages].reverse();
     },
-    async postMessage() {
-      const trimmed = this.newMessageBody.trim();
-      if (!trimmed) { return; }
+    openThread(thread) {
+      this.activeThread = thread;
+      this.replyBody = '';
+    },
+    closeThread() {
+      this.activeThread = null;
+    },
+    async postThread() {
+      const title = this.newThreadTitle.trim();
+      const body = this.newThreadBody.trim();
+      if (!title || !body) return;
 
       this.postWait = true;
       this.serverError = null;
       try {
         await apolloClient.mutate({
-          fetchPolicy: 'no-cache',
           mutation: gql`
             mutation CreateTournamentMessage($input: CreateTournamentMessageInput!) {
-              createTournamentMessage(input: $input) {
-                id
-              }
+              createTournamentMessage(input: $input) { id }
             }
           `,
-          variables: {
-            input: {
-              tournamentId: this.tournamentId,
-              body: trimmed,
-              sendEmail: this.sendEmailOnPost
-            }
-          }
+          variables: { input: { tournamentId: this.tournamentId, title, body } }
         });
+        this.newThreadTitle = '';
+        this.newThreadBody = '';
+        this.showNewThreadForm = false;
+        await this.fetchThreads();
+      } catch (err) {
+        this.serverError = err.graphQLErrors?.[0]?.message || 'Failed to post thread';
+      }
+      this.postWait = false;
+    },
+    async postReply() {
+      const body = this.replyBody.trim();
+      if (!body || !this.activeThread) return;
 
-        this.newMessageBody = '';
-        this.sendEmailOnPost = false;
-        await this.fetchMessages();
-      } catch(err) {
-        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
-          this.serverError = err.graphQLErrors[0].message;
-        } else {
-          this.serverError = "Failed to post message";
-        }
+      this.postWait = true;
+      this.serverError = null;
+      try {
+        await apolloClient.mutate({
+          mutation: gql`
+            mutation CreateTournamentMessage($input: CreateTournamentMessageInput!) {
+              createTournamentMessage(input: $input) { id }
+            }
+          `,
+          variables: { input: { tournamentId: this.tournamentId, body, parentId: this.activeThread.id } }
+        });
+        this.replyBody = '';
+        await this.fetchThreads();
+        // Refresh the active thread with updated replies
+        this.activeThread = this.threads.find(t => t.id === this.activeThread.id) || null;
+      } catch (err) {
+        this.serverError = err.graphQLErrors?.[0]?.message || 'Failed to post reply';
       }
       this.postWait = false;
     },
@@ -129,13 +221,9 @@ export default {
   },
   async created() {
     try {
-      await this.fetchMessages();
-    } catch(err) {
-      if(err.graphQLErrors && err.graphQLErrors.length > 0) {
-        this.serverError = err.graphQLErrors[0].message;
-      } else {
-        this.serverError = "Failed to load message board";
-      }
+      await this.fetchThreads();
+    } catch (err) {
+      this.serverError = err.graphQLErrors?.[0]?.message || 'Failed to load message board';
     }
     this.isPageReady = true;
   }
@@ -143,56 +231,91 @@ export default {
 </script>
 
 <style scoped>
-  .message-list {
-    max-height: 400px;
-    overflow-y: auto;
-    text-align: left;
-    margin-bottom: 16px;
-  }
+.board-actions {
+  margin-bottom: 12px;
+}
 
-  .no-messages {
-    color: #777;
-    padding: 12px 0;
-  }
+.new-thread-form {
+  background: #f9f9f9;
+  padding: 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
 
-  .message-item {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-  }
+.no-threads,
+.no-replies {
+  color: #777;
+  padding: 12px 0;
+}
 
-  .message-meta {
-    font-size: 0.85em;
-    color: #555;
-  }
+.thread-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
 
-  .message-entry-name {
-    color: #777;
-  }
+.thread-row:hover {
+  background: #f5f5f5;
+}
 
-  .message-timestamp {
-    color: #999;
-  }
+.thread-title {
+  font-weight: bold;
+  font-size: 1em;
+}
 
-  .message-email-icon {
-    font-size: 12px !important;
-    height: 12px !important;
-    width: 12px !important;
-    margin-left: 6px;
-    color: #999;
-  }
+.thread-meta {
+  font-size: 0.82em;
+  color: #777;
+  margin-top: 2px;
+}
 
-  .message-body {
-    white-space: pre-wrap;
-    margin-top: 2px;
-  }
+.back-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 16px;
+  gap: 4px;
+}
 
-  .message-input-field {
-    text-align: left;
-  }
+.post {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
 
-  .message-post-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
+.post.op {
+  margin-bottom: 8px;
+}
+
+.post-title {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 4px;
+}
+
+.post-meta {
+  font-size: 0.82em;
+  color: #777;
+  margin-bottom: 6px;
+}
+
+.post-body {
+  white-space: pre-wrap;
+}
+
+.reply {
+  padding-left: 16px;
+  border-left: 3px solid #ddd;
+  margin-top: 8px;
+}
+
+.replies-section {
+  margin-bottom: 16px;
+}
+
+.reply-form {
+  margin-top: 16px;
+}
+
+.btn-spin {
+  margin-left: 8px;
+}
 </style>
