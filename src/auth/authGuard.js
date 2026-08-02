@@ -8,6 +8,7 @@ export const authGuard = (to, from, next) => {
   if (IS_LOCAL) {
     sessionStorage.setItem('sports-exchange.token', 'local-dev-token');
     sessionStorage.setItem('sports-exchange.email', 'exigentemail@gmail.com');
+    sessionStorage.setItem('sports-exchange.isAdmin', 'false');
     return next();
   }
 
@@ -21,22 +22,19 @@ export const authGuard = (to, from, next) => {
       const token = tokenInfo.__raw;
       sessionStorage.setItem('sports-exchange.token', token);
       const email = sessionStorage.getItem('sports-exchange.email');
-      const rolesList = authService.user['https://sports-exchange/roles'];
-      const isAdmin = rolesList.includes('ADMIN');
+      const isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
 
       if(to.name !== 'Login' && !email) {
-        console.log("got to login")
         next({ name: 'Login' });
       } else if (to.name === 'Admin' && !isAdmin) {
-        console.log('go to home')
         next({ name: 'Home' });
+      } else {
+        return next();
       }
-      console.log('go to next')
-      return next();
     }
 
-    // Otherwise, log in
-    authService.loginWithRedirect({ appState: { targetUrl: to.fullPath } });
+    // Otherwise, send to login page
+    next({ name: 'Login' });
   };
 
   // If loading has already finished, check the auth state using `fn()`

@@ -11,20 +11,11 @@ export default {
   name: "Home",
   data() {
     return {
-      auth: null,
       isAdmin: false,
       userEntries: null
     }
   },
-  watch: {
-    async auth(val) {
-      if(val && !val.loading) {
-        const rolesList = this.$auth.user['https://sports-exchange/roles'];
-        this.isAdmin = rolesList.includes('ADMIN');
-        await this.determineRouteRedirect();
-      }
-    }
-  },
+  watch: {},
   methods: {
     async determineRouteRedirect() {
       if(this.isAdmin) {
@@ -65,7 +56,8 @@ export default {
     }
   },
   async created() {
-    this.auth = this.$auth;
+    this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+    await this.determineRouteRedirect();
   }
 }
 </script>

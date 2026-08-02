@@ -9,7 +9,33 @@
       {{successMessage}}
       <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
     </div>
-    <div v-if="selectedView === 'main'">
+    <div class="admin-tabs">
+      <md-button :class="{ 'md-raised md-primary': adminTab === 'tournaments' }" @click="adminTab = 'tournaments'">Tournaments</md-button>
+      <md-button :class="{ 'md-raised md-primary': adminTab === 'users' }" @click="adminTab = 'users'">Users</md-button>
+    </div>
+
+    <div v-if="adminTab === 'users'" class="users-tab">
+      <h2>User Access Management</h2>
+      <md-table v-if="allUsers">
+        <md-table-row>
+          <md-table-head>Name</md-table-head>
+          <md-table-head>Email</md-table-head>
+          <md-table-head>Username</md-table-head>
+          <md-table-head>Admin</md-table-head>
+        </md-table-row>
+        <md-table-row v-for="u in allUsers" :key="u.id">
+          <md-table-cell>{{u.firstname}} {{u.lastname}}</md-table-cell>
+          <md-table-cell>{{u.email}}</md-table-cell>
+          <md-table-cell>{{u.username}}</md-table-cell>
+          <md-table-cell>
+            <md-switch v-model="u.isAdmin" @change="toggleAdmin(u)">{{u.isAdmin ? 'Admin' : 'User'}}</md-switch>
+          </md-table-cell>
+        </md-table-row>
+      </md-table>
+      <div v-else>Loading users...</div>
+    </div>
+
+    <div v-if="adminTab === 'tournaments' && selectedView === 'main'">
       <md-button @click="showCreateNewTournamentModal = true" class="md-raised md-primary">Create New Tournament</md-button>
       <div class="content-container">
         <md-card class="tournament-card" v-for="tournament in tournaments" v-bind:key="tournament.id">
@@ -41,8 +67,8 @@
         </md-card>
       </div>
     </div>
-    <tournament v-if="selectedView === 'tournamentDetail'" :selected-view.sync="selectedView" :selected-entry.sync="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></tournament>
-    <edit-entry-data v-if="selectedView === 'editEntry'" :selected-view.sync="selectedView" :selected-entry="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></edit-entry-data>
+    <tournament v-if="adminTab === 'tournaments' && selectedView === 'tournamentDetail'" :selected-view.sync="selectedView" :selected-entry.sync="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></tournament>
+    <edit-entry-data v-if="adminTab === 'tournaments' && selectedView === 'editEntry'" :selected-view.sync="selectedView" :selected-entry="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></edit-entry-data>
 
     <md-dialog :md-active.sync="showCreateNewTournamentModal">
       <md-dialog-title class="text-center">Create Tournament</md-dialog-title>
@@ -66,16 +92,16 @@ export default {
   data() {
     return {
       isPageReady: false,
+      adminTab: 'tournaments',
       selectedView: "main",
       leagues: null,
       tournaments: null,
+      allUsers: null,
       selectedLeagueId: null,
       selectedTournamentId: null,
       showCreateNewTournamentModal: false,
       successMessage: null,
       selectedEntry: null
-      // leagueId: null,
-      // tournamentId: null
     }
   },
   props: {
@@ -165,17 +191,46 @@ export default {
       this.showCreateNewTournamentModal = false;
       this.successMessage = "Successfully created new tournament!";
       await this.fetchAllLeagues();
+    },
+    async fetchAllUsers() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query Users {
+            users {
+              id
+              firstname
+              lastname
+              email
+              username
+              isAdmin
+            }
+          }
+        `
+      });
+      this.allUsers = response.data.users;
+    },
+    async toggleAdmin(user) {
+      const newValue = !user.isAdmin;
+      await apolloClient.mutate({
+        mutation: gql`
+          mutation SetUserAdmin($email: String!, $isAdmin: Boolean!) {
+            setUserAdmin(email: $email, isAdmin: $isAdmin) {
+              email
+              isAdmin
+            }
+          }
+        `,
+        variables: { email: user.email, isAdmin: newValue }
+      });
+      user.isAdmin = newValue;
+      this.successMessage = `${user.email} is now ${newValue ? 'an Admin' : 'a regular user'}.`;
     }
   },
   async created() {
-    if(this.$auth) {
-      setTimeout(async () => {
-        const rolesList = this.$auth.user['https://sports-exchange/roles'];
-        this.isAdmin = rolesList.includes('ADMIN');
-        await this.fetchAllLeagues();
-        this.isPageReady = true;
-      }, 1000)
-    }
+    await this.fetchAllLeagues();
+    await this.fetchAllUsers();
+    this.isPageReady = true;
   }
 }
 </script>
@@ -206,5 +261,17 @@ export default {
 
 .tournament-card {
   margin-bottom: 20px;
+}
+
+.admin-tabs {
+  margin-bottom: 16px;
+}
+
+.users-tab {
+  padding: 0 16px;
+}
+
+.users-tab h2 {
+  margin-bottom: 16px;
 }
 </style>

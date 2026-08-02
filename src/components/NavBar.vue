@@ -80,13 +80,8 @@ export default {
     }
   },
   watch: {
-    async auth(val) {
-      if(val && !val.loading) {
-        const user = this.$auth.user;
-        const rolesList = (user && user['https://sports-exchange/roles']) || [];
-        this.isAdmin = rolesList.includes('ADMIN');
-        await this.determineRouteRedirect();
-      }
+    $route() {
+      this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
     }
   },
   methods: {
@@ -106,14 +101,8 @@ export default {
     }
   },
   async created() {
-    if(this.$auth) {
-      setTimeout(() => {
-        const user = this.$auth.user;
-        const rolesList = (user && user['https://sports-exchange/roles']) || [];
-        this.isAdmin = rolesList.includes('ADMIN');
-        this.isPageReady = true;
-      }, 100);
-    }
+    this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+    this.isPageReady = true;
   }
 }
 </script>
