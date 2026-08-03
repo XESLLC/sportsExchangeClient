@@ -181,23 +181,22 @@ export default {
 }
 
 /*
- * vue-material's .md-table and .md-table-content both have overflow-x:auto,
- * which makes them the scroll container instead of our wrapper.
- * Override to visible so .table-wrapper is the single scroll container,
- * which is required for position:sticky to work correctly.
+ * vue-material sets overflow-x:auto on both .md-table and .md-table-content,
+ * which intercepts the scroll context before our wrapper. Force both to visible
+ * so .table-wrapper becomes the sole scroll container for position:sticky.
  */
 .table-wrapper ::v-deep .md-table,
 .table-wrapper ::v-deep .md-table-content {
-  overflow: visible;
+  overflow: visible !important;
 }
 
 /*
- * border-collapse:collapse prevents position:sticky on td/th in all browsers.
- * Switch to separate and manually restore row borders.
+ * border-collapse:collapse unconditionally breaks position:sticky on td/th.
+ * Must be separate. Manually restore the row-separator borders below.
  */
 .table-wrapper ::v-deep table {
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
 }
 
 .table-wrapper ::v-deep tbody .md-table-row td {
@@ -206,19 +205,19 @@ export default {
 
 /* Sticky header row */
 .table-wrapper ::v-deep thead th {
-  position: sticky;
+  position: sticky !important;
   top: 0;
   z-index: 2;
-  background: #fff;
+  background: #fff !important;
 }
 
 /* Frozen col 1: Rank */
 .table-wrapper ::v-deep thead th:nth-child(1),
 .table-wrapper ::v-deep tbody td:nth-child(1) {
-  position: sticky;
+  position: sticky !important;
   left: 0;
   z-index: 2;
-  background: #fff;
+  background: #fff !important;
   width: 60px;
   min-width: 60px;
   max-width: 60px;
@@ -227,10 +226,10 @@ export default {
 /* Frozen col 2: Owner */
 .table-wrapper ::v-deep thead th:nth-child(2),
 .table-wrapper ::v-deep tbody td:nth-child(2) {
-  position: sticky;
+  position: sticky !important;
   left: 60px;
   z-index: 2;
-  background: #fff;
+  background: #fff !important;
   width: 160px;
   min-width: 160px;
   max-width: 160px;
@@ -239,10 +238,10 @@ export default {
 /* Frozen col 3: Entry Name */
 .table-wrapper ::v-deep thead th:nth-child(3),
 .table-wrapper ::v-deep tbody td:nth-child(3) {
-  position: sticky;
+  position: sticky !important;
   left: 220px;
   z-index: 2;
-  background: #fff;
+  background: #fff !important;
   min-width: 160px;
   border-right: 2px solid #e0e0e0;
 }
