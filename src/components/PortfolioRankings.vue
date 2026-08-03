@@ -324,4 +324,24 @@ export default {
 .rankings-table tbody tr:hover .col-entry {
   background: #f0f0f0;
 }
+
+/* On small screens the frozen columns consume almost the full viewport width,
+   leaving no room to see the scrollable columns. Unfreeze them so the table
+   just scrolls freely like a normal wide table. */
+@media screen and (max-width: 600px) {
+  .rankings-table .col-rank,
+  .rankings-table .col-owner,
+  .rankings-table .col-entry {
+    position: static;
+    border-right: none;
+  }
+
+  .rankings-table thead .col-rank,
+  .rankings-table thead .col-owner,
+  .rankings-table thead .col-entry {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
 </style>
