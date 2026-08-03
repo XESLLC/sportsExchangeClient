@@ -32,9 +32,20 @@
             <md-switch v-model="isIpoOpenInput" @change="toggleIpoIsActive()" class="md-primary">
               <div>IPO Open: {{isIpoOpenInput}}</div>
             </md-switch>
-            <md-switch v-model="isTournamentActiveInput" @change="toggleIsTournamentActive()" class="md-primary">
-              <div>Tournament Active: {{isTournamentActiveInput}}</div>
-            </md-switch>
+            <div class="tournament-status-control">
+              <label for="tournament-status-select">Tournament Status:</label>
+              <select id="tournament-status-select" v-model="tournamentStatusInput" @change="updateTournamentStatus()">
+                <option value="active">Active</option>
+                <option value="closed">Closed</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div v-if="tournamentStatusInput === 'closed'" class="tournament-closed-notice">
+              This tournament is closed - new entries, trading, and milestone/dividend edits are disabled. History remains visible to participants.
+            </div>
+            <div v-if="tournamentStatusInput === 'inactive'" class="tournament-closed-notice">
+              This tournament is inactive - it's hidden from non-admins entirely, including their own past entries.
+            </div>
             <div>
               <span class="link decorated-link" @click="showEditTournamentTeamsModal = true">Edit Tournament Teams IPO</span>
             </div>
@@ -85,13 +96,14 @@
                 <input
                   :value="milestonePercentInputs[item.id]"
                   @input="milestonePercentInputs[item.id] = $event.target.value"
+                  :disabled="tournament.status === 'closed'"
                   class="pool-percent-input"
                   type="number"
                   step="0.1"
                   min="0"
                   max="100"
                 >%
-                <span @click="saveMilestonePoolPercent(item)" title="Save % of pot">
+                <span v-if="tournament.status !== 'closed'" @click="saveMilestonePoolPercent(item)" title="Save % of pot">
                   <md-icon class="fas fa-save link"></md-icon>
                 </span>
                 <span v-if="savingMilestonePercent[item.id]" class="pool-percent-saved">Saved</span>
@@ -126,7 +138,7 @@
     <md-dialog :md-active.sync="showEditMilestoneModal" :md-fullscreen="false">
       <md-dialog-title v-if="selectedMilestone">Milestone - {{selectedMilestone.name}}</md-dialog-title>
       <md-dialog-content>
-        <milestone-form :form-type="'edit'" :success-cb="editMilestoneCb" :milestone="selectedMilestone" :tournament-id="tournamentId" :league-id="leagueId"></milestone-form>
+        <milestone-form :form-type="'edit'" :success-cb="editMilestoneCb" :milestone="selectedMilestone" :tournament-id="tournamentId" :league-id="leagueId" :tournament-closed="tournament.status === 'closed'"></milestone-form>
       </md-dialog-content>
     </md-dialog>
 
@@ -190,7 +202,7 @@ export default {
       isIpoOpenInput: null,
       showMarkEliminatedTeamsModal: false,
       dividendTotals: {},
-      isTournamentActiveInput: null,
+      tournamentStatusInput: null,
       selectedFile: null,
       entryStocks: null,
       masterSheetEntryStockData: null,
@@ -324,15 +336,15 @@ export default {
 
       this.transactions = response.data.getTournamentTransactions;
     },
-    async toggleIsTournamentActive() {
+    async updateTournamentStatus() {
       const response = await apolloClient.mutate({
         fetchPolicy: 'no-cache',
         mutation: gql`
-          mutation ToggleIsTournamentActive($tournamentId: ID!, $isActive: Boolean!) {
-            toggleIsTournamentActive(tournamentId: $tournamentId, isActive: $isActive) {
+          mutation UpdateTournamentStatus($tournamentId: ID!, $status: TournamentStatus!) {
+            updateTournamentStatus(tournamentId: $tournamentId, status: $status) {
               id
               name,
-              isActive,
+              status,
               masterSheetUpload,
               pricingSheetUpload,
               rulesSheetUpload,
@@ -343,12 +355,13 @@ export default {
         `,
         variables: {
           tournamentId: this.tournamentId,
-          isActive: this.isTournamentActiveInput
+          status: this.tournamentStatusInput
         }
       });
 
-      this.isTournamentActiveInput = response.data.toggleIsTournamentActive.isActive;
-      this.successMessage = `Successfully changed tournament active to ${this.isTournamentActiveInput}`;
+      this.tournamentStatusInput = response.data.updateTournamentStatus.status;
+      this.tournament.status = this.tournamentStatusInput;
+      this.successMessage = `Successfully changed tournament status to ${this.tournamentStatusInput}`;
     },
     async getStocks() {
       let result = [];
@@ -622,7 +635,7 @@ export default {
             id
             name,
             isIpoOpen,
-            isActive,
+            status,
             masterSheetUpload,
             pricingSheetUpload,
             rulesSheetUpload,
@@ -647,7 +660,7 @@ export default {
 
     this.tournament = response.data.tournament;
     this.isIpoOpenInput = this.tournament.isIpoOpen;
-    this.isTournamentActiveInput = this.tournament.isActive;
+    this.tournamentStatusInput = this.tournament.status;
     (this.tournament.settings.milestones || []).forEach((milestone) => {
       this.milestonePercentInputs[milestone.id] = milestone.poolPercent != null
         ? round1(milestone.poolPercent * 100)
@@ -689,5 +702,22 @@ export default {
   color: green;
   font-size: 0.85em;
   margin-left: 6px;
+}
+
+.tournament-status-control {
+  margin-top: 8px;
+}
+
+.tournament-status-control select {
+  margin-left: 8px;
+}
+
+.tournament-closed-notice {
+  margin-top: 6px;
+  padding: 8px;
+  background-color: #fff3cd;
+  color: #664d03;
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 </style>

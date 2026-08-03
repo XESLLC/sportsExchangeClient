@@ -208,7 +208,7 @@ export default {
               id
               name,
               isIpoOpen,
-              isActive,
+              status,
               masterSheetUpload,
               pricingSheetUpload,
               rulesSheetUpload,

@@ -51,7 +51,7 @@
                 <div class="md-layout-item">Created At: {{formatDate(parseInt(tournament.createdAt))}}</div>
               </div>
               <div class="md-layout">
-                <div class="md-layout-item">Is Active: {{tournament.isActive}}</div>
+                <div class="md-layout-item">Status: {{tournament.status}}</div>
               </div>
               <!-- <div class="md-layout">
                 <div class="md-layout-item">Number of Entries</div>
@@ -148,7 +148,7 @@ export default {
                 isIpoOpen,
                 leagueId,
                 createdAt,
-                isActive,
+                status,
                 masterSheetUpload,
                 pricingSheetUpload,
                 rulesSheetUpload,

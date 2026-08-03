@@ -215,7 +215,7 @@ export default {
                 name,
                 leagueId,
                 isIpoOpen,
-                isActive,
+                status,
                 masterSheetUpload,
                 pricingSheetUpload,
                 rulesSheetUpload,
@@ -231,7 +231,7 @@ export default {
       });
 
       this.entries = response.data.userEntries;
-      this.entries = this.entries.filter(entry => entry.tournament.isActive);
+      this.entries = this.entries.filter(entry => entry.tournament.status !== 'inactive');
 
       if(!this.entryId) {
         if(this.entries.length === 1) {

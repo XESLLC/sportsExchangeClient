@@ -101,7 +101,7 @@ export default {
               name,
               tournamentId,
               tournament {
-                isActive,
+                status,
                 masterSheetUpload,
                 pricingSheetUpload,
                 rulesSheetUpload,
@@ -117,7 +117,7 @@ export default {
       });
 
       this.userEntries = response.data.userEntries;
-      this.userEntries = this.userEntries.filter(entry => entry.tournament.isActive);
+      this.userEntries = this.userEntries.filter(entry => entry.tournament.status !== 'inactive');
     },
     goToPortfolio(entry) {
       this.$router.push({ 

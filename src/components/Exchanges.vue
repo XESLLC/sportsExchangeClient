@@ -10,8 +10,8 @@
       </md-card-header>
 
       <md-card-content>
-        <div v-if="activeTournaments && activeTournaments.length > 0">
-          <md-table v-model="activeTournaments" class="web-table text-left">
+        <div v-if="visibleTournaments && visibleTournaments.length > 0">
+          <md-table v-model="visibleTournaments" class="web-table text-left">
             <md-table-row slot="md-table-row" slot-scope="{ item }">
               <md-table-cell md-label="Tournament Name" md-sort-by="name">
                 <span class="tournament-link link" @click="goToTournamentHome(item.id)">{{ item.leagueName }} - {{ item.name }}</span>
@@ -24,12 +24,15 @@
                   Not Entered
                 </div>
               </md-table-cell>
-              <md-table-cell md-label="New Entry"><md-button class="md-raised md-primary" @click="showJoinTournamentForm(item)">Create New Entry</md-button></md-table-cell>
+              <md-table-cell md-label="New Entry">
+                <md-button v-if="item.status === 'active'" class="md-raised md-primary" @click="showJoinTournamentForm(item)">Create New Entry</md-button>
+                <span v-else class="tournament-closed-label">Closed</span>
+              </md-table-cell>
               <md-table-cell md-label="Created At" md-sort-by="createdAt">{{getReadableDate(item.createdAt)}}</md-table-cell>
             </md-table-row>
           </md-table>
           <md-table class="mobile-table">
-            <md-table-row v-for="tournament in activeTournaments" :key="tournament.id">
+            <md-table-row v-for="tournament in visibleTournaments" :key="tournament.id">
               <md-table-cell>
                 <div class="mobile-row">
                   <div class="mobile-header">Tournament Name</div>
@@ -45,7 +48,10 @@
 
                 <div class="mobile-row">
                   <div class="mobile-header">New Entry</div>
-                  <div><md-button class="md-raised md-primary" @click="showJoinTournamentForm(tournament)">Create New Entry</md-button></div>
+                  <div>
+                    <md-button v-if="tournament.status === 'active'" class="md-raised md-primary" @click="showJoinTournamentForm(tournament)">Create New Entry</md-button>
+                    <span v-else class="tournament-closed-label">Closed</span>
+                  </div>
                 </div>
 
                 <div class="mobile-row">
@@ -57,7 +63,7 @@
           </md-table>
         </div>
         <div v-else>
-          There are currently no active tournaments. Please contact your commissioner to add a new tournament
+          There are currently no tournaments to show. Please contact your commissioner to add a new tournament
         </div>
       </md-card-content>
     </md-card>
@@ -91,7 +97,7 @@ export default {
       selectedTournament: null,
       userEntries: null,
       tournamentEntries: {},
-      activeTournaments: null
+      visibleTournaments: null
     }
   },
   props: {
@@ -113,7 +119,7 @@ export default {
               name,
               leagueName,
               createdAt,
-              isActive,
+              status,
               masterSheetUpload,
               pricingSheetUpload,
               rulesSheetUpload,
@@ -125,7 +131,10 @@ export default {
       });
 
       this.tournaments = response.data.tournaments;
-      this.activeTournaments = this.tournaments.filter(tournament => tournament.isActive);
+      // Inactive tournaments stay hidden entirely (unchanged from before).
+      // Closed tournaments remain visible so people can see history - they
+      // just won't have a "Create New Entry" option (see template above).
+      this.visibleTournaments = this.tournaments.filter(tournament => tournament.status !== 'inactive');
     },
     goToEntry(entryId) {
       this.$router.push({
@@ -260,6 +269,11 @@ export default {
   font-weight: bold;
   color: #487233;
   text-decoration: underline;
+}
+
+.tournament-closed-label {
+  color: #888;
+  font-style: italic;
 }
 
 .mobile-row {

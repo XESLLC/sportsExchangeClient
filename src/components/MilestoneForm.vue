@@ -19,15 +19,18 @@
     </md-table>
 
     <md-card-actions>
-      <md-button v-if="['1','2','3'].includes(milestone.id)" :disabled="standingsWait || httpWait" @click="autoFillFromStandings" class="md-accent md-raised" :class="{ 'btn-disabled' : standingsWait || httpWait }">
+      <md-button v-if="['1','2','3'].includes(milestone.id)" :disabled="tournamentClosed || standingsWait || httpWait" @click="autoFillFromStandings" class="md-accent md-raised" :class="{ 'btn-disabled' : tournamentClosed || standingsWait || httpWait }">
         Auto-fill from NFL Standings
         <md-progress-spinner v-if="standingsWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
       </md-button>
-      <md-button :disabled="httpWait" @click="saveMilestoneData" class="md-primary md-raised" :class="{ 'btn-disabled' : httpWait }">
+      <md-button :disabled="tournamentClosed || httpWait" @click="saveMilestoneData" class="md-primary md-raised" :class="{ 'btn-disabled' : tournamentClosed || httpWait }">
         Save Milestone Data
         <md-progress-spinner v-if="httpWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
       </md-button>
     </md-card-actions>
+    <div v-if="tournamentClosed" class="tournament-closed-notice">
+      This tournament is closed - milestone data is read-only.
+    </div>
     <div v-if="standingsInfo" class="standings-info text-center">
       {{standingsInfo}}
     </div>
@@ -72,6 +75,10 @@ export default {
     },
     milestone: {
       type: Object
+    },
+    tournamentClosed: {
+      type: Boolean,
+      default: false
     }
   },
   methods: {
@@ -397,5 +404,14 @@ export default {
     margin-top: 8px;
     font-size: 0.9em;
     color: #555;
+  }
+
+  .tournament-closed-notice {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #fff3cd;
+    color: #664d03;
+    border-radius: 4px;
+    font-size: 0.9em;
   }
 </style>
