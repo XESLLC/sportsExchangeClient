@@ -37,34 +37,35 @@
 
     <div v-if="adminTab === 'tournaments' && selectedView === 'main'">
       <md-button @click="showCreateNewTournamentModal = true" class="md-raised md-primary">Create New Tournament</md-button>
-      <div class="content-container">
-        <md-card class="tournament-card" v-for="tournament in tournaments" v-bind:key="tournament.id">
-          <div>
-            <md-card-header>
-              <div class="md-title">{{tournament.name}}</div>
-            </md-card-header>
-            <md-card-content>
-              <div class="md-layout">
-                <div class="md-layout-item">League: {{getLeagueName(tournament.leagueId)}}</div>
-              </div>
-              <div class="md-layout">
-                <div class="md-layout-item">Created At: {{formatDate(parseInt(tournament.createdAt))}}</div>
-              </div>
-              <div class="md-layout">
-                <div class="md-layout-item">Status: {{tournament.status}}</div>
-              </div>
-              <!-- <div class="md-layout">
-                <div class="md-layout-item">Number of Entries</div>
-              </div>
-              <div class="md-layout">
-                <div class="md-layout-item">Number of Tournament Teams</div>
-              </div> -->
-              <div>
-                <md-button @click="goToTournamentDetails(tournament)" class="md-raised md-primary">View Details/Edit</md-button>
-              </div>
-            </md-card-content>
-          </div>
-        </md-card>
+      <div class="table-wrapper">
+        <table class="tournaments-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>League</th>
+              <th>Created At</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="tournament in tournaments" :key="tournament.id">
+              <td>{{ tournament.name }}</td>
+              <td>{{ getLeagueName(tournament.leagueId) }}</td>
+              <td>{{ formatDate(parseInt(tournament.createdAt)) }}</td>
+              <td>
+                <select class="status-select" :value="tournament.status" @change="changeStatus(tournament, $event.target.value)">
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                  <option value="closed">closed</option>
+                </select>
+              </td>
+              <td>
+                <md-button @click="goToTournamentDetails(tournament)" class="md-raised md-primary btn-details">View Details/Edit</md-button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
     <tournament v-if="adminTab === 'tournaments' && selectedView === 'tournamentDetail'" :selected-view.sync="selectedView" :selected-entry.sync="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></tournament>
@@ -187,6 +188,22 @@ export default {
     showContent(content) {
       this.contentToShow = content;
     },
+    async changeStatus(tournament, newStatus) {
+      if (newStatus === tournament.status) return;
+      await apolloClient.mutate({
+        mutation: gql`
+          mutation UpdateTournamentStatus($tournamentId: ID!, $status: TournamentStatus!) {
+            updateTournamentStatus(tournamentId: $tournamentId, status: $status) {
+              id
+              status
+            }
+          }
+        `,
+        variables: { tournamentId: tournament.id, status: newStatus }
+      });
+      tournament.status = newStatus;
+      this.successMessage = `${tournament.name} status set to "${newStatus}".`;
+    },
     async createTournamentSuccessCb() {
       this.showCreateNewTournamentModal = false;
       this.successMessage = "Successfully created new tournament!";
@@ -236,33 +253,6 @@ export default {
 </script>
 
 <style scoped>
-.custom-select {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid black;
-  width: 100%;
-}
-
-.custom-select select {
-  padding-left: 10px;
-  background-color: transparent;
-  font-size: 18px;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-}
-
-.custom-select-wrapper {
-  position: relative;
-  user-select: none;
-  width: 100%;
-}
-
-.tournament-card {
-  margin-bottom: 20px;
-}
-
 .admin-tabs {
   margin-bottom: 16px;
 }
@@ -273,5 +263,55 @@ export default {
 
 .users-tab h2 {
   margin-bottom: 16px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 16px;
+  border: 1px solid rgba(0, 0, 0, .12);
+}
+
+.tournaments-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.tournaments-table th,
+.tournaments-table td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, .12);
+  vertical-align: middle;
+}
+
+.tournaments-table thead th {
+  background: #f5f5f5;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tournaments-table tbody tr:hover td {
+  background: #f9f9f9;
+}
+
+.status-select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: #487233;
+}
+
+.btn-details {
+  margin: 0;
 }
 </style>
