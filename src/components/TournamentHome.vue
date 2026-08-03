@@ -159,12 +159,12 @@ export default {
               id
               name
               leagueName
-              isActive
+              status
             }
           }
         `
       });
-      this.activeTournaments = response.data.tournaments.filter(t => t.isActive);
+      this.activeTournaments = response.data.tournaments.filter(t => t.status !== 'inactive');
     },
     goToPortfolio(entryId) {
       this.$router.push({ name: 'Portfolio', params: { entryId } });

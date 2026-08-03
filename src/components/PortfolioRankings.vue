@@ -121,77 +121,33 @@ export default {
     }
   },
   methods: {
-    async fetchPortfolioSummaries(entryId) {
-      try {
-        const response = await apolloClient.query({
-          fetchPolicy: 'no-cache',
-          query: gql`
-            query PortfolioSummaries($tournamentId: ID!, $entryId: ID) {
-              portfolioSummaries(tournamentId: $tournamentId, entryId: $entryId) {
-                ownerName,
-                entryName,
-                totalInitialInvestment,
-                totalInitialStocksOwned,
-                totalCurrentStocksOwned,
-                stocksRemaining,
-                percentStocksRemaining,
-                totalCurrentTeamsOwned,
-                totalCurrentTeamsRemaining,
-                moneyWonToDate,
-                percentMoneyWonInvested,
-                originalMoneyRemaining,
-                profitLoss,
-                percentMoneyRemaining
-              }
-            }
-          `,
-          variables: {
-            tournamentId: this.tournamentId,
-            entryId
-          }
-        });
-
-        return response.data.portfolioSummaries[0];
-      } catch(err) {
-        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
-          this.errorMessage = err.graphQLErrors[0].message;
-        } else {
-          this.errorMessage = "Server Error";
-        }
-        return err;
-      }
-    },
-		async fetchEntries() {
-			const response = await apolloClient.query({
+    async init() {
+      const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
         query: gql`
-          query EntriesByTournamentId($tournamentId: ID!) {
-            entriesByTournamentId(tournamentId: $tournamentId) {
-              id,
-              name,
-              tournamentId,
-              ipoCashSpent,
-              secondaryMarketCashSpent,
-              secondaryMarketCashIncome
+          query PortfolioSummaries($tournamentId: ID!) {
+            portfolioSummaries(tournamentId: $tournamentId) {
+              ownerName,
+              entryName,
+              totalInitialInvestment,
+              totalInitialStocksOwned,
+              totalCurrentStocksOwned,
+              stocksRemaining,
+              percentStocksRemaining,
+              totalCurrentTeamsOwned,
+              totalCurrentTeamsRemaining,
+              moneyWonToDate,
+              percentMoneyWonInvested,
+              originalMoneyRemaining,
+              profitLoss,
+              percentMoneyRemaining
             }
           }
         `,
-        variables: {
-          tournamentId: this.tournamentId
-        }
+        variables: { tournamentId: this.tournamentId }
       });
-
-      return response.data.entriesByTournamentId;
-		},
-		async init() {
-			const entries = await this.fetchEntries();
-
-			this.portfolioSummaries = await Promise.all(
-				entries.map(async (entry) => {
-          return await this.fetchPortfolioSummaries(entry.id);
-				})
-			);
-		}
+      this.portfolioSummaries = response.data.portfolioSummaries;
+    }
   },
   async created() {
     await this.init();
