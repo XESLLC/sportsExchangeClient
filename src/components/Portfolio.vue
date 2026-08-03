@@ -34,24 +34,36 @@
             <portfolio-detail v-if="contentToShow === 'detail'" :entry-id="selectedEntry.id" :is-ipo-open="selectedEntry.isIpoOpen"></portfolio-detail>
             <portfolio-summary v-if="contentToShow === 'summary'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-summary>
             <div v-if="contentToShow === 'payouts'" class="payouts-container">
-              <md-table v-model="tournamentTeamData" class="text-left dividend-payouts-table">
-                <md-table-toolbar>
-                  <h1 class="md-title">Current Payouts</h1>
-                </md-table-toolbar>
-
-                <md-table-row slot="md-table-row" slot-scope="{ item }">
-                  <md-table-cell md-label="Team Name" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
-                  <md-table-cell md-label="IPO Price" md-sort-by="ipoPrice">{{ item.ipoPrice | toCurrency }}</md-table-cell>
-                  <md-table-cell v-if="item.seed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell>
-                  <md-table-cell v-if="item.region" md-label="Region" md-sort-by="region">{{ item.region }}</md-table-cell>
-                  <md-table-cell v-if="item.milestoneData && item.milestoneData.length > 0" md-label="Wins">{{ item.milestoneData[0].wins }}</md-table-cell>
-                  <md-table-cell v-for="(milestone, index) in maxMilestoneData" :key="milestone.id" :md-label="milestone.milestoneName + ' Dividend'">
-                    <span v-if="item.milestoneData[index]">{{ truncateDecimals(item.milestoneData[index].dividendPrice / item.numStocksInCirculation, 2) | toCurrency }}</span>
-                    <span v-else>-</span>
-                  </md-table-cell>
-                  <md-table-cell md-label="Total Dividend">{{ getTotalDividendAmountForTeam(item) | toCurrency }}</md-table-cell>
-                </md-table-row>
-              </md-table>
+              <h1 class="md-title payouts-title">Current Payouts</h1>
+              <div class="table-wrapper">
+                <table class="payouts-table">
+                  <thead>
+                    <tr>
+                      <th class="col-team sortable" @click="sortPayouts('teamName')">Team Name <span class="sort-icon">{{ payoutSortIcon('teamName') }}</span></th>
+                      <th class="sortable" @click="sortPayouts('ipoPrice')">IPO Price <span class="sort-icon">{{ payoutSortIcon('ipoPrice') }}</span></th>
+                      <th v-if="hasSeed" class="sortable" @click="sortPayouts('seed')">Seed <span class="sort-icon">{{ payoutSortIcon('seed') }}</span></th>
+                      <th v-if="hasRegion" class="sortable" @click="sortPayouts('region')">Region <span class="sort-icon">{{ payoutSortIcon('region') }}</span></th>
+                      <th v-if="hasWins" class="sortable" @click="sortPayouts('wins')">Wins <span class="sort-icon">{{ payoutSortIcon('wins') }}</span></th>
+                      <th v-for="milestone in maxMilestoneData" :key="milestone.milestoneId">{{ milestone.milestoneName }} Dividend</th>
+                      <th class="sortable" @click="sortPayouts('totalDividend')">Total Dividend <span class="sort-icon">{{ payoutSortIcon('totalDividend') }}</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in sortedPayouts" :key="item.id">
+                      <td class="col-team">{{ item.teamName }}</td>
+                      <td>{{ item.ipoPrice | toCurrency }}</td>
+                      <td v-if="hasSeed">{{ item.seed }}</td>
+                      <td v-if="hasRegion">{{ item.region }}</td>
+                      <td v-if="hasWins">{{ item.milestoneData && item.milestoneData[0] ? item.milestoneData[0].wins : '-' }}</td>
+                      <td v-for="(milestone, index) in maxMilestoneData" :key="milestone.milestoneId">
+                        <span v-if="item.milestoneData && item.milestoneData[index]">{{ truncateDecimals(item.milestoneData[index].dividendPrice / item.numStocksInCirculation, 2) | toCurrency }}</span>
+                        <span v-else>-</span>
+                      </td>
+                      <td>{{ getTotalDividendAmountForTeam(item) | toCurrency }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
             <portfolio-rankings v-if="contentToShow === 'rankings'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-rankings>
             <entry-owners v-if="contentToShow === 'owners'" :entry-id="selectedEntry.id"></entry-owners>
@@ -84,7 +96,9 @@ export default {
       contentToShow: 'detail',
       tournamentTeamData: [],
       maxLengthOfMilestoneData: 0,
-      leagueName: null
+      leagueName: null,
+      payoutSortField: 'teamName',
+      payoutSortOrder: 'asc'
     }
   },
   props: {
@@ -106,6 +120,33 @@ export default {
     }
   },
   computed: {
+    hasSeed() {
+      return this.tournamentTeamData.some(t => t.seed);
+    },
+    hasRegion() {
+      return this.tournamentTeamData.some(t => t.region);
+    },
+    hasWins() {
+      return this.tournamentTeamData.some(t => t.milestoneData && t.milestoneData.length > 0);
+    },
+    sortedPayouts() {
+      return [...this.tournamentTeamData].sort((a, b) => {
+        let aVal, bVal;
+        if (this.payoutSortField === 'wins') {
+          aVal = a.milestoneData && a.milestoneData[0] ? a.milestoneData[0].wins : 0;
+          bVal = b.milestoneData && b.milestoneData[0] ? b.milestoneData[0].wins : 0;
+        } else if (this.payoutSortField === 'totalDividend') {
+          aVal = this.getTotalDividendAmountForTeam(a);
+          bVal = this.getTotalDividendAmountForTeam(b);
+        } else {
+          aVal = a[this.payoutSortField];
+          bVal = b[this.payoutSortField];
+        }
+        const dir = this.payoutSortOrder === 'asc' ? 1 : -1;
+        if (typeof aVal === 'string') return dir * (aVal || '').localeCompare(bVal || '');
+        return dir * ((aVal || 0) - (bVal || 0));
+      });
+    },
     breadcrumbCrumbs() {
       const crumbs = [{ label: 'Home', to: { name: 'Home' } }];
       if(!this.selectedEntry) {
@@ -126,6 +167,18 @@ export default {
     }
   },
   methods: {
+    sortPayouts(field) {
+      if (this.payoutSortField === field) {
+        this.payoutSortOrder = this.payoutSortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.payoutSortField = field;
+        this.payoutSortOrder = field === 'teamName' || field === 'region' ? 'asc' : 'desc';
+      }
+    },
+    payoutSortIcon(field) {
+      if (this.payoutSortField !== field) return '⇅';
+      return this.payoutSortOrder === 'asc' ? '▲' : '▼';
+    },
     getTotalDividendAmountForTeam(tournamentTeam) {
       if(tournamentTeam.milestoneData) {
         const totalDivendend = tournamentTeam.milestoneData.reduce((result, milestoneData) => {
@@ -275,5 +328,88 @@ export default {
 .payouts-container {
   padding-top: 20px;
   width: 100%;
+}
+
+.payouts-title {
+  margin-bottom: 12px;
+}
+
+.table-wrapper {
+  overflow: auto;
+  max-height: calc(100vh - 300px);
+  border: 1px solid rgba(0, 0, 0, .12);
+}
+
+.payouts-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.payouts-table th,
+.payouts-table td {
+  padding: 8px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, .12);
+}
+
+.payouts-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f5f5f5;
+  z-index: 2;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.payouts-table .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.payouts-table .sortable:hover {
+  background: #ebebeb;
+}
+
+.sort-icon {
+  font-size: 10px;
+  color: #888;
+  margin-left: 4px;
+}
+
+.payouts-table .col-team {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  min-width: 140px;
+  border-right: 2px solid #ddd;
+}
+
+.payouts-table thead .col-team {
+  z-index: 4;
+  background: #f5f5f5;
+}
+
+.payouts-table tbody tr:hover td {
+  background: #f9f9f9;
+}
+
+.payouts-table tbody tr:hover .col-team {
+  background: #f0f0f0;
+}
+
+@media screen and (max-width: 600px) {
+  .payouts-table .col-team {
+    position: static;
+    border-right: none;
+  }
+
+  .payouts-table thead .col-team {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
 }
 </style>
