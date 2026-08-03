@@ -116,13 +116,37 @@ export default {
     }
   },
   watch: {
+    isPageReady(val) {
+      if (val) this.$nextTick(this.applyTableFixes);
+    },
     async tournamentId(newVal, oldVal) {
       if(newVal && newVal !== oldVal) {
         await this.init();
+        await this.$nextTick();
+        this.applyTableFixes();
       }
     }
   },
   methods: {
+    applyTableFixes() {
+      // CSS cannot reliably override vue-material's internal element styles from
+      // a scoped parent component, so we set these critical values directly as
+      // inline styles, which always win in the cascade.
+      const mdTable = this.$el.querySelector('.md-table');
+      const mdTableContent = this.$el.querySelector('.md-table-content');
+      const table = this.$el.querySelector('table');
+      // Make .md-table-content the self-contained scroll container
+      if (mdTable) mdTable.style.overflow = 'visible';
+      if (mdTableContent) {
+        mdTableContent.style.overflow = 'auto';
+        mdTableContent.style.maxHeight = 'calc(100vh - 220px)';
+      }
+      // border-collapse:collapse unconditionally breaks position:sticky on td/th
+      if (table) {
+        table.style.borderCollapse = 'separate';
+        table.style.borderSpacing = '0';
+      }
+    },
     async init() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
@@ -175,49 +199,30 @@ export default {
   font-weight: bold;
 }
 
-.table-wrapper {
-  overflow: auto;
-  max-height: calc(100vh - 220px);
-}
+/* applyTableFixes() sets overflow and border-collapse on internal vue-material
+   elements via JS inline styles, which is the only reliable way to override them.
+   The sticky rules below work once those container fixes are in place. */
 
-/*
- * vue-material sets overflow-x:auto on both .md-table and .md-table-content,
- * which intercepts the scroll context before our wrapper. Force both to visible
- * so .table-wrapper becomes the sole scroll container for position:sticky.
- */
-.table-wrapper ::v-deep .md-table,
-.table-wrapper ::v-deep .md-table-content {
-  overflow: visible !important;
-}
-
-/*
- * border-collapse:collapse unconditionally breaks position:sticky on td/th.
- * Must be separate. Manually restore the row-separator borders below.
- */
-.table-wrapper ::v-deep table {
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-}
-
+/* Restore row borders after border-collapse:separate (set by JS) */
 .table-wrapper ::v-deep tbody .md-table-row td {
   border-top: 1px solid rgba(0, 0, 0, .12);
 }
 
 /* Sticky header row */
 .table-wrapper ::v-deep thead th {
-  position: sticky !important;
+  position: sticky;
   top: 0;
   z-index: 2;
-  background: #fff !important;
+  background: #fff;
 }
 
 /* Frozen col 1: Rank */
 .table-wrapper ::v-deep thead th:nth-child(1),
 .table-wrapper ::v-deep tbody td:nth-child(1) {
-  position: sticky !important;
+  position: sticky;
   left: 0;
   z-index: 2;
-  background: #fff !important;
+  background: #fff;
   width: 60px;
   min-width: 60px;
   max-width: 60px;
@@ -226,10 +231,10 @@ export default {
 /* Frozen col 2: Owner */
 .table-wrapper ::v-deep thead th:nth-child(2),
 .table-wrapper ::v-deep tbody td:nth-child(2) {
-  position: sticky !important;
+  position: sticky;
   left: 60px;
   z-index: 2;
-  background: #fff !important;
+  background: #fff;
   width: 160px;
   min-width: 160px;
   max-width: 160px;
@@ -238,10 +243,10 @@ export default {
 /* Frozen col 3: Entry Name */
 .table-wrapper ::v-deep thead th:nth-child(3),
 .table-wrapper ::v-deep tbody td:nth-child(3) {
-  position: sticky !important;
+  position: sticky;
   left: 220px;
   z-index: 2;
-  background: #fff !important;
+  background: #fff;
   min-width: 160px;
   border-right: 2px solid #e0e0e0;
 }
