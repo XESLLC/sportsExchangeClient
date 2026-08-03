@@ -380,30 +380,25 @@ export default {
       this.successMessage = `Successfully changed tournament status to ${this.tournamentStatusInput}`;
     },
     async getStocks() {
-      let result = [];
-      for(let entry of this.entries) {
-        const response = await apolloClient.query({
-          fetchPolicy: 'no-cache',
-          query: gql`
-            query StocksByEntryId($entryId: ID!) {
-              stocksByEntryId(entryId: $entryId) {
-                teamName,
-                ipoPrice,
-                quantity,
-                teamId,
-                tournamentTeamId
+      return await Promise.all(
+        this.entries.map(entry =>
+          apolloClient.query({
+            fetchPolicy: 'no-cache',
+            query: gql`
+              query StocksByEntryId($entryId: ID!) {
+                stocksByEntryId(entryId: $entryId) {
+                  teamName,
+                  ipoPrice,
+                  quantity,
+                  teamId,
+                  tournamentTeamId
+                }
               }
-            }
-          `,
-          variables: {
-            entryId: entry.id
-          }
-        });
-
-        result.push(response.data.stocksByEntryId);
-      }
-
-      return result;
+            `,
+            variables: { entryId: entry.id }
+          }).then(r => r.data.stocksByEntryId)
+        )
+      );
     },
     editMilestone(milestone) {
       this.selectedMilestone = milestone;
@@ -493,40 +488,48 @@ export default {
       );
     },
     async getDividendTotals() {
-      this.entryStocks = await this.getStocks();
-      for(let i = 0; i < this.entryStocks.length; i++) {
-        const tournamentTeamData = await this.fetchTournamentTeams(this.entryStocks[i]);
-        const milestoneTeamData = tournamentTeamData.filter(teamData => teamData.milestoneData);
-        if(milestoneTeamData.length === 0) {
-          this.dividendTotals[i] = 0;
-        } else {
-          const milestoneList = milestoneTeamData.map((team) => {
-            const dataList = team.milestoneData.reduce((_result, _data) => {
-              const dividendPrice = this.truncateDecimals(_data.dividendPrice / team.numStocksInCirculation, 2);
-              const tournamentTeamId = team.id;
-              if(!_result[tournamentTeamId]) {
-                _result[tournamentTeamId] = dividendPrice;
-              } else {
-                _result[tournamentTeamId] += dividendPrice;
+      // Fetch all tournament teams with milestone data in one query,
+      // then fetch all entry stocks in parallel — replaces the old approach
+      // of making one tournamentTeamByTeamId query per stock item per entry
+      // (which caused 500+ sequential requests for large tournaments).
+      const [teamsResponse, allStocks] = await Promise.all([
+        apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query TournamentTeamsForDividends($tournamentId: ID!) {
+              tournamentTeams(tournamentId: $tournamentId) {
+                id,
+                milestoneData {
+                  dividendPrice
+                },
+                numStocksInCirculation
               }
-              return _result;
-            }, {});
-
-            return dataList;
-          });
-
-          const total = milestoneList.reduce((result, _data) => {
-            const found = this.entryStocks[i].find(entryStock => entryStock.tournamentTeamId === Object.keys(_data)[0]);
-            if(found) {
-              const multiplier = found.quantity;
-              result += (Object.values(_data)[0] * multiplier);
             }
-            return result;
-          }, 0);
+          `,
+          variables: { tournamentId: this.tournamentId }
+        }),
+        this.getStocks()
+      ]);
 
-          this.dividendTotals[i] = total;
+      const teamMap = new Map(
+        teamsResponse.data.tournamentTeams.map(t => [t.id, t])
+      );
+      this.entryStocks = allStocks;
+
+      this.entryStocks.forEach((stocks, i) => {
+        if (!stocks || stocks.length === 0) {
+          this.dividendTotals[i] = 0;
+          return;
         }
-      }
+        const total = stocks.reduce((sum, stock) => {
+          const team = teamMap.get(stock.tournamentTeamId);
+          if (!team || !team.milestoneData || team.milestoneData.length === 0) return sum;
+          const teamDiv = team.milestoneData.reduce((s, m) =>
+            s + this.truncateDecimals(m.dividendPrice / team.numStocksInCirculation, 2), 0);
+          return sum + teamDiv * stock.quantity;
+        }, 0);
+        this.dividendTotals[i] = total;
+      });
     },
     truncateDecimals(number, digits) {
       const multiplier = Math.pow(10, digits);
@@ -558,38 +561,30 @@ export default {
       return response.data.tournamentTeams;
     },
     async fetchEntryUsers() {
-      for(let entry of this.entries) {
-        const response = await apolloClient.query({
-          fetchPolicy: 'no-cache',
-          query: gql`
-            query usersByEntryId($entryId: ID!) {
-              usersByEntryId(entryId: $entryId) {
-                id,
-                firstname,
-                lastname,
-                email
+      await Promise.all(
+        this.entries.map(async (entry) => {
+          const response = await apolloClient.query({
+            fetchPolicy: 'no-cache',
+            query: gql`
+              query usersByEntryId($entryId: ID!) {
+                usersByEntryId(entryId: $entryId) {
+                  id,
+                  firstname,
+                  lastname,
+                  email
+                }
               }
-            }
-          `,
-          variables: {
-            entryId: entry.id
-          }
-        });
+            `,
+            variables: { entryId: entry.id }
+          });
 
-        const userResponse = response.data.usersByEntryId;
-        this.entryOwners[entry.id] = userResponse.reduce((result, user) => {
-          if(!this.entryOwners[entry.id]) {
-            result = {
-              fullname: `${user.firstname} ${user.lastname}`,
-              email: user.email
-            }
-          } else {
-            result.fullname += `, ${user.firstname} ${user.lastname}`;
-            result.email += `, ${user.email}`;
-          }
-          return result;
-        }, {});
-      }
+          const users = response.data.usersByEntryId;
+          this.entryOwners[entry.id] = {
+            fullname: users.map(u => `${u.firstname} ${u.lastname}`).join(', '),
+            email: users.map(u => u.email).join(', ')
+          };
+        })
+      );
     },
     async fetchTournamentEntries() {
       const response = await apolloClient.query({
@@ -670,38 +665,40 @@ export default {
     }
   },
   async created() {
-    const response = await apolloClient.query({
-      fetchPolicy: 'no-cache',
-      query: gql`
-        query Tournament($id: ID!) {
-          tournament(id: $id) {
-            id
-            name,
-            isIpoOpen,
-            status,
-            masterSheetUpload,
-            pricingSheetUpload,
-            rulesSheetUpload,
-            projectedPayoutSheetUpload,
-            stockPayoutSheetUpload
-            settings {
-              ipoBudget,
-              secondaryMarketBudget,
-              milestones {
-                id,
-                name,
-                poolPercent
+    // Phase 1: tournament details and entries list in parallel
+    const [tournamentResponse] = await Promise.all([
+      apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query Tournament($id: ID!) {
+            tournament(id: $id) {
+              id
+              name,
+              isIpoOpen,
+              status,
+              masterSheetUpload,
+              pricingSheetUpload,
+              rulesSheetUpload,
+              projectedPayoutSheetUpload,
+              stockPayoutSheetUpload
+              settings {
+                ipoBudget,
+                secondaryMarketBudget,
+                milestones {
+                  id,
+                  name,
+                  poolPercent
+                }
               }
             }
           }
-        }
-      `,
-      variables: {
-        id: this.tournamentId
-      }
-    });
+        `,
+        variables: { id: this.tournamentId }
+      }),
+      this.fetchTournamentEntries()
+    ]);
 
-    this.tournament = response.data.tournament;
+    this.tournament = tournamentResponse.data.tournament;
     this.isIpoOpenInput = this.tournament.isIpoOpen;
     this.tournamentStatusInput = this.tournament.status;
     (this.tournament.settings.milestones || []).forEach((milestone) => {
@@ -710,10 +707,13 @@ export default {
         : 0;
     });
 
-    await this.fetchTournamentEntries();
-    await this.fetchEntryUsers();
-    await this.getDividendTotals();
-    await this.fetchTransactions();
+    // Phase 2: everything that depends on this.entries, all in parallel
+    await Promise.all([
+      this.fetchEntryUsers(),
+      this.getDividendTotals(),
+      this.fetchTransactions()
+    ]);
+
     this.isPageReady = true;
   }
 }
