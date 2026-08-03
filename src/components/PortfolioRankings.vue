@@ -176,67 +176,81 @@ export default {
 }
 
 .table-wrapper {
-  overflow-x: auto;
-  width: 100%;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
 }
 
-/* Force border-collapse:separate so position:sticky works on td/th */
+/*
+ * vue-material's .md-table and .md-table-content both have overflow-x:auto,
+ * which makes them the scroll container instead of our wrapper.
+ * Override to visible so .table-wrapper is the single scroll container,
+ * which is required for position:sticky to work correctly.
+ */
+.table-wrapper ::v-deep .md-table,
+.table-wrapper ::v-deep .md-table-content {
+  overflow: visible;
+}
+
+/*
+ * border-collapse:collapse prevents position:sticky on td/th in all browsers.
+ * Switch to separate and manually restore row borders.
+ */
 .table-wrapper ::v-deep table {
   border-collapse: separate;
   border-spacing: 0;
 }
 
-/* Sticky column headers */
-.table-wrapper ::v-deep thead tr {
-  position: sticky;
-  top: 0;
-  z-index: 4;
+.table-wrapper ::v-deep tbody .md-table-row td {
+  border-top: 1px solid rgba(0, 0, 0, .12);
 }
 
+/* Sticky header row */
 .table-wrapper ::v-deep thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: #fff;
 }
 
-/* Rank — col 1 */
+/* Frozen col 1: Rank */
 .table-wrapper ::v-deep thead th:nth-child(1),
 .table-wrapper ::v-deep tbody td:nth-child(1) {
   position: sticky;
   left: 0;
-  z-index: 3;
+  z-index: 2;
   background: #fff;
-  min-width: 54px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
 }
 
-/* Owner — col 2 */
+/* Frozen col 2: Owner */
 .table-wrapper ::v-deep thead th:nth-child(2),
 .table-wrapper ::v-deep tbody td:nth-child(2) {
   position: sticky;
-  left: 54px;
-  z-index: 3;
+  left: 60px;
+  z-index: 2;
   background: #fff;
-  min-width: 130px;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
 }
 
-/* Entry Name — col 3 */
+/* Frozen col 3: Entry Name */
 .table-wrapper ::v-deep thead th:nth-child(3),
 .table-wrapper ::v-deep tbody td:nth-child(3) {
   position: sticky;
-  left: 184px;
-  z-index: 3;
+  left: 220px;
+  z-index: 2;
   background: #fff;
-  min-width: 140px;
+  min-width: 160px;
+  border-right: 2px solid #e0e0e0;
 }
 
-/* Corner cells (frozen col + sticky header) need highest z-index */
+/* Corner cells (sticky in both axes) need highest z-index */
 .table-wrapper ::v-deep thead th:nth-child(1),
 .table-wrapper ::v-deep thead th:nth-child(2),
 .table-wrapper ::v-deep thead th:nth-child(3) {
-  z-index: 5;
-}
-
-/* Subtle right border on the last frozen column to separate from scrollable area */
-.table-wrapper ::v-deep thead th:nth-child(3),
-.table-wrapper ::v-deep tbody td:nth-child(3) {
-  border-right: 1px solid #e0e0e0;
+  z-index: 4;
 }
 </style>
