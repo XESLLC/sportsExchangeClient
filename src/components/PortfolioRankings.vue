@@ -2,6 +2,7 @@
   <div v-if="isPageReady">
     <h2>Portfolio Rankings</h2>
 
+    <div class="table-wrapper">
     <md-table md-sort="percentMoneyWonInvested" md-sort-order="desc" v-model="portfolioSummaries">
       <md-table-row class="text-left link" @click="showRankDetailModal = true, selectedEntry = item" slot="md-table-row" slot-scope="{ item, index }">
         <md-table-cell md-label="Rank">{{ index + 1 }}</md-table-cell>
@@ -21,6 +22,7 @@
 				<md-table-cell md-label="$ Remaining % Money Invested" md-sort-by="percentMoneyRemaining">{{ item.percentMoneyRemaining.toFixed(2) }}%</md-table-cell>
       </md-table-row>
     </md-table>
+    </div>
 
     <md-dialog v-if="showRankDetailModal && selectedEntry" :md-active.sync="showRankDetailModal">
       <md-dialog-title class="text-center">{{selectedEntry.entryName}}</md-dialog-title>
@@ -171,5 +173,70 @@ export default {
 
 .section-header {
   font-weight: bold;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Force border-collapse:separate so position:sticky works on td/th */
+.table-wrapper ::v-deep table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Sticky column headers */
+.table-wrapper ::v-deep thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.table-wrapper ::v-deep thead th {
+  background: #fff;
+}
+
+/* Rank — col 1 */
+.table-wrapper ::v-deep thead th:nth-child(1),
+.table-wrapper ::v-deep tbody td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+  min-width: 54px;
+}
+
+/* Owner — col 2 */
+.table-wrapper ::v-deep thead th:nth-child(2),
+.table-wrapper ::v-deep tbody td:nth-child(2) {
+  position: sticky;
+  left: 54px;
+  z-index: 3;
+  background: #fff;
+  min-width: 130px;
+}
+
+/* Entry Name — col 3 */
+.table-wrapper ::v-deep thead th:nth-child(3),
+.table-wrapper ::v-deep tbody td:nth-child(3) {
+  position: sticky;
+  left: 184px;
+  z-index: 3;
+  background: #fff;
+  min-width: 140px;
+}
+
+/* Corner cells (frozen col + sticky header) need highest z-index */
+.table-wrapper ::v-deep thead th:nth-child(1),
+.table-wrapper ::v-deep thead th:nth-child(2),
+.table-wrapper ::v-deep thead th:nth-child(3) {
+  z-index: 5;
+}
+
+/* Subtle right border on the last frozen column to separate from scrollable area */
+.table-wrapper ::v-deep thead th:nth-child(3),
+.table-wrapper ::v-deep tbody td:nth-child(3) {
+  border-right: 1px solid #e0e0e0;
 }
 </style>
