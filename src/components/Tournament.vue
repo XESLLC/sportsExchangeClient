@@ -72,6 +72,9 @@
               <md-table-cell md-label="Edit Entry Data">
                 <span @click="currentSelectedView = 'editEntry', currentSelectedEntry = item"><md-icon class="fas fa-edit link"></md-icon></span>
               </md-table-cell>
+              <md-table-cell md-label="Delete">
+                <span @click="promptDeleteEntry(item)"><md-icon class="fas fa-trash link delete-icon"></md-icon></span>
+              </md-table-cell>
             </md-table-row>
           </md-table>
         </div>
@@ -149,6 +152,17 @@
       </md-dialog-content>
     </md-dialog>
 
+    <md-dialog :md-active.sync="showDeleteEntryModal" :md-fullscreen="false">
+      <md-dialog-title class="text-center">Are You Sure You Want To Delete?</md-dialog-title>
+      <md-dialog-content v-if="entryToDelete">
+        <p>Delete entry <strong>{{entryToDelete.name}}</strong>? This cannot be undone.</p>
+      </md-dialog-content>
+      <md-dialog-actions>
+        <md-button @click="showDeleteEntryModal = false; entryToDelete = null">Cancel</md-button>
+        <md-button class="md-raised md-accent" @click="confirmDeleteEntry()">Delete</md-button>
+      </md-dialog-actions>
+    </md-dialog>
+
     <md-dialog :md-active.sync="showMasterSheetModal" :md-fullscreen="false" id="master-sheet">
       <md-dialog-title>
         Master Sheet Data - {{tournament.name}}
@@ -209,7 +223,9 @@ export default {
       showMasterSheetModal: false,
       transactions: null,
       masterSheetTransactionData: null,
-      showEmailForm: false
+      showEmailForm: false,
+      showDeleteEntryModal: false,
+      entryToDelete: null
     }
   },
   computed: {
@@ -624,6 +640,33 @@ export default {
       await this.fetchEntryUsers();
       await this.getDividendTotals();
       this.successMessage = "Successfully elimiated teams for tournament!";
+    },
+    promptDeleteEntry(entry) {
+      this.entryToDelete = entry;
+      this.showDeleteEntryModal = true;
+    },
+    async confirmDeleteEntry() {
+      const entry = this.entryToDelete;
+      this.showDeleteEntryModal = false;
+      this.entryToDelete = null;
+      try {
+        await apolloClient.mutate({
+          mutation: gql`
+            mutation DeleteEntry($id: ID!) {
+              deleteEntry(id: $id)
+            }
+          `,
+          variables: { id: entry.id }
+        });
+        await this.fetchTournamentEntries();
+        await this.fetchEntryUsers();
+        await this.getDividendTotals();
+        this.successMessage = `Entry "${entry.name}" has been deleted.`;
+      } catch(err) {
+        this.serverError = err.graphQLErrors && err.graphQLErrors.length > 0
+          ? err.graphQLErrors[0].message
+          : "Failed to delete entry.";
+      }
     }
   },
   async created() {
@@ -719,5 +762,9 @@ export default {
   color: #664d03;
   border-radius: 4px;
   font-size: 0.9em;
+}
+
+.delete-icon {
+  color: #c62828 !important;
 }
 </style>
