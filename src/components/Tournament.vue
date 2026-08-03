@@ -152,13 +152,13 @@
       </md-dialog-content>
     </md-dialog>
 
-    <md-dialog :md-active.sync="showDeleteEntryModal" :md-fullscreen="false">
+    <md-dialog :md-active.sync="showDeleteEntryModal" :md-fullscreen="false" @md-opened="$refs.cancelDeleteBtn.$el.focus()">
       <md-dialog-title class="text-center">Are You Sure You Want To Delete?</md-dialog-title>
       <md-dialog-content v-if="entryToDelete">
         <p>Delete entry <strong>{{entryToDelete.name}}</strong>? This cannot be undone.</p>
       </md-dialog-content>
       <md-dialog-actions>
-        <md-button @click="showDeleteEntryModal = false; entryToDelete = null">Cancel</md-button>
+        <md-button ref="cancelDeleteBtn" @click="showDeleteEntryModal = false; entryToDelete = null">Cancel</md-button>
         <md-button class="md-raised md-accent" @click="confirmDeleteEntry()">Delete</md-button>
       </md-dialog-actions>
     </md-dialog>
