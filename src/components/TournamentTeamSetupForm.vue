@@ -43,7 +43,7 @@
           </select>
         </md-table-cell>
         <md-table-cell md-label="Price">
-          $<input v-model="item.price" class="price-input" type="number" step="0.01" min="0">
+          $<input v-model="item.price" @paste="handlePricePaste($event, item.rowId)" class="price-input" type="number" step="0.01" min="0">
         </md-table-cell>
         <md-table-cell md-label="Remove">
           <span @click="removeRow(item.rowId)"><md-icon class="fa fa-times-circle link"></md-icon></span>
@@ -104,6 +104,30 @@ export default {
     },
     removeRow(rowId) {
       this.rows = this.rows.filter(row => row.rowId !== rowId);
+    },
+    handlePricePaste(event, rowId) {
+      const clipboardText = (event.clipboardData || window.clipboardData).getData('text');
+      const lines = clipboardText.split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line !== "");
+
+      // Single value: let the browser's normal paste-into-field behavior happen.
+      if (lines.length <= 1) { return; }
+
+      event.preventDefault();
+
+      const startIndex = this.rows.findIndex(row => row.rowId === rowId);
+      if (startIndex === -1) { return; }
+
+      lines.forEach((line, i) => {
+        const targetRow = this.rows[startIndex + i];
+        if (!targetRow) { return; }
+
+        // If a name+price column was pasted by mistake, take the last column as the price.
+        const rawValue = line.split("\t").pop();
+        const parsed = parseFloat(rawValue.replace(/[^0-9.-]/g, ""));
+        if (!isNaN(parsed)) {
+          targetRow.price = parsed;
+        }
+      });
     },
     addRowsFromBulkPaste() {
       const existingNames = new Set(this.rows.map(row => (row.name || "").trim()).filter(Boolean));
