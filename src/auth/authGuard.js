@@ -8,7 +8,7 @@ export const authGuard = (to, from, next) => {
   if (IS_LOCAL) {
     sessionStorage.setItem('sports-exchange.token', 'local-dev-token');
     sessionStorage.setItem('sports-exchange.email', 'exigentemail@gmail.com');
-    sessionStorage.setItem('sports-exchange.isAdmin', 'false');
+    sessionStorage.setItem('sports-exchange.isAdmin', 'true');
     return next();
   }
 
@@ -25,9 +25,9 @@ export const authGuard = (to, from, next) => {
       const isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
 
       if(to.name !== 'Login' && !email) {
-        next({ name: 'Login' });
+        return next({ name: 'Login' });
       } else if (to.name === 'Admin' && !isAdmin) {
-        next({ name: 'Home' });
+        return next({ name: 'Home' });
       } else {
         return next();
       }
