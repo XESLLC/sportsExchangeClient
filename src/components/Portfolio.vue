@@ -34,7 +34,7 @@
               {{successMessage}}
               <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
             </div>
-            <portfolio-detail v-if="contentToShow === 'detail'" :entry-id="selectedEntry.id" :is-ipo-open="selectedEntry.isIpoOpen"></portfolio-detail>
+            <portfolio-detail v-if="contentToShow === 'detail'" :entry-id="selectedEntry.id" :is-ipo-open="selectedEntry.isIpoOpen" :tournament-team-data="tournamentTeamData"></portfolio-detail>
             <portfolio-summary v-if="contentToShow === 'summary'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-summary>
             <div v-if="contentToShow === 'payouts'" class="payouts-container">
               <h1 class="md-title payouts-title">Current Payouts</h1>
