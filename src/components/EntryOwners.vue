@@ -18,11 +18,13 @@
     </md-table>
 
     <div class="md-layout add-owner-row">
-      <md-field class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
-        <label>Add Owner by Email</label>
-        <md-input v-model="newOwnerEmail" placeholder="jane@example.com" @keyup.enter.native="addOwner"></md-input>
+      <div class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
+        <div class="field-label">Add Owner by Email</div>
+        <md-field>
+          <md-input v-model="newOwnerEmail" placeholder="jane@example.com" @keyup.enter.native="addOwner"></md-input>
+        </md-field>
         <span class="hint">They need an existing account - ask them to sign up first if they don't have one.</span>
-      </md-field>
+      </div>
       <div class="md-layout-item">
         <md-button :disabled="!newOwnerEmail || addWait" @click="addOwner" class="md-accent md-raised" :class="{ 'btn-disabled' : !newOwnerEmail || addWait }">
           Add Owner
@@ -168,7 +170,19 @@ export default {
 <style scoped>
 .add-owner-row {
   margin-top: 16px;
-  align-items: center;
+  align-items: flex-start;
+}
+
+.field-label {
+  text-align: left;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.hint {
+  display: block;
+  margin-top: 8px;
+  text-align: left;
 }
 
 .disabled-icon {
