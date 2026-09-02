@@ -12,8 +12,8 @@
     <div class="md-layout">
       <div class="md-layout-item"></div>
       <div class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
+        <div class="field-label">Additional Owner Emails</div>
         <md-field>
-          <label>Additional Owner Email(s)</label>
           <md-input v-model="additionalOwnerEmailsInput" placeholder="jane@example.com, sam@example.com"></md-input>
         </md-field>
         <span class="hint">Each address must already have an account - they'll see this entry next time they log in.</span>
@@ -106,6 +106,12 @@ export default {
 </script>
 
 <style scoped>
+.field-label {
+  text-align: left;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.54);
+}
+
 .hint {
   display: block;
   margin-top: 8px;
