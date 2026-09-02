@@ -153,9 +153,7 @@ export default {
         crumbs.push({ label: this.leagueName, to: { name: 'League', params: { leagueId: this.leagueId } } });
       }
       if(this.tournamentName) {
-        // Tournament management is admin-only elsewhere in the app, so this
-        // step is informational text, not a link, from a regular user's view.
-        crumbs.push({ label: this.tournamentName });
+        crumbs.push({ label: this.tournamentName, to: { name: 'TournamentHome', params: { tournamentId: this.selectedEntry.tournamentId } } });
       }
       crumbs.push({ label: this.selectedEntry.name });
       return crumbs;

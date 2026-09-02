@@ -36,7 +36,7 @@ export default {
 }
 
 .breadcrumb-link {
-  color: #487233;
+  color: blue;
   text-decoration: none;
 }
 
