@@ -58,6 +58,9 @@
       </md-app-drawer>
 
       <md-app-content id="app">
+        <div v-if="showEmailReminder" class="email-reminder-banner">
+          ⚠ Your email isn't confirmed yet - you may not be receiving trade notifications. <span class="link decorated-link" @click="goToRoute('Profile')">Confirm your email</span>
+        </div>
         <router-view></router-view>
       </md-app-content>
     </md-app>
@@ -71,7 +74,8 @@ export default {
     return {
       isAdmin: false,
       isPageReady: false,
-      sideMenuVisible: false
+      sideMenuVisible: false,
+      showEmailReminder: false
     }
   },
   computed: {
@@ -82,11 +86,17 @@ export default {
   watch: {
     $route() {
       this.refreshIsAdmin();
+      this.refreshEmailReminder();
     }
   },
   methods: {
     refreshIsAdmin() {
       this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+    },
+    refreshEmailReminder() {
+      const isLoggedIn = !!sessionStorage.getItem('sports-exchange.email');
+      const isConfirmed = sessionStorage.getItem('sports-exchange.emailConfirmed') === 'true';
+      this.showEmailReminder = isLoggedIn && !isConfirmed && this.$route.name !== 'ConfirmEmail';
     },
     goToRoute(routeName) {
       if(this.$route.name !== routeName) {
@@ -105,11 +115,14 @@ export default {
   },
   async created() {
     this.refreshIsAdmin();
+    this.refreshEmailReminder();
     this.isPageReady = true;
     this.$root.$on('sports-exchange-auth-updated', this.refreshIsAdmin);
+    this.$root.$on('sports-exchange-auth-updated', this.refreshEmailReminder);
   },
   beforeDestroy() {
     this.$root.$off('sports-exchange-auth-updated', this.refreshIsAdmin);
+    this.$root.$off('sports-exchange-auth-updated', this.refreshEmailReminder);
   }
 }
 </script>
@@ -127,6 +140,14 @@ export default {
 
 .brand-img {
   height: 50px;
+}
+
+.email-reminder-banner {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 0.9em;
 }
 
 .nav-bar {

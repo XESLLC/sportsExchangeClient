@@ -54,7 +54,8 @@ export default {
                 firstname,
                 lastname,
                 email,
-                isAdmin
+                isAdmin,
+                emailConfirmedAt
               }
             }
           `,
@@ -65,6 +66,7 @@ export default {
         const user = response.data.createUser;
         sessionStorage.setItem('sports-exchange.email', user.email);
         sessionStorage.setItem('sports-exchange.isAdmin', user.isAdmin ? 'true' : 'false');
+        sessionStorage.setItem('sports-exchange.emailConfirmed', user.emailConfirmedAt ? 'true' : 'false');
       } catch (err) {
         // Fetch user to get isAdmin
         try {
@@ -72,7 +74,7 @@ export default {
             fetchPolicy: 'no-cache',
             query: gql`
               query User($email: String!) {
-                user(email: $email) { email, isAdmin }
+                user(email: $email) { email, isAdmin, emailConfirmedAt }
               }
             `,
             variables: { email: this.userInput.email }
@@ -80,9 +82,11 @@ export default {
           const user = userResp.data.user;
           sessionStorage.setItem('sports-exchange.email', user.email);
           sessionStorage.setItem('sports-exchange.isAdmin', user.isAdmin ? 'true' : 'false');
+          sessionStorage.setItem('sports-exchange.emailConfirmed', user.emailConfirmedAt ? 'true' : 'false');
         } catch {
           sessionStorage.setItem('sports-exchange.email', this.userInput.email);
           sessionStorage.setItem('sports-exchange.isAdmin', 'false');
+          sessionStorage.setItem('sports-exchange.emailConfirmed', 'false');
         }
       }
       this.$root.$emit('sports-exchange-auth-updated');

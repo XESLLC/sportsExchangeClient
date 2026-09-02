@@ -21,12 +21,17 @@
           <md-table-head>Name</md-table-head>
           <md-table-head>Email</md-table-head>
           <md-table-head>Username</md-table-head>
+          <md-table-head>Email Confirmed</md-table-head>
           <md-table-head>Admin</md-table-head>
         </md-table-row>
         <md-table-row v-for="u in allUsers" :key="u.id">
           <md-table-cell>{{u.firstname}} {{u.lastname}}</md-table-cell>
           <md-table-cell>{{u.email}}</md-table-cell>
           <md-table-cell>{{u.username}}</md-table-cell>
+          <md-table-cell>
+            <span v-if="u.emailConfirmedAt" class="email-confirmed-yes">✓ {{ formatDate(new Date(u.emailConfirmedAt).getTime()) }}</span>
+            <span v-else class="email-confirmed-no">⚠ Not confirmed</span>
+          </md-table-cell>
           <md-table-cell>
             <md-switch v-model="u.isAdmin" @change="toggleAdmin(u)">{{u.isAdmin ? 'Admin' : 'User'}}</md-switch>
           </md-table-cell>
@@ -221,6 +226,7 @@ export default {
               email
               username
               isAdmin
+              emailConfirmedAt
             }
           }
         `
@@ -263,6 +269,14 @@ export default {
 
 .users-tab h2 {
   margin-bottom: 16px;
+}
+
+.email-confirmed-yes {
+  color: #17bd22;
+}
+
+.email-confirmed-no {
+  color: #b58900;
 }
 
 .table-wrapper {
