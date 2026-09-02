@@ -8,7 +8,7 @@
       <md-table-row slot="md-table-row" slot-scope="{ item }">
         <md-table-cell md-label="Team" md-sort-by="name">{{ item.name }}</md-table-cell>
         <md-table-cell md-label="Price" md-sort-by="price">
-          $<input :ref="'priceInput-' + item.id" @change="updateInput(item.id)" class="price-input" type="number" step="1" min="0" max="" :value="item.price">
+          $<input :ref="'priceInput-' + item.id" @change="updateInput(item.id)" @paste="handlePricePaste($event, item.id)" class="price-input" type="number" step="1" min="0" max="" :value="item.price">
         </md-table-cell>
         <md-table-cell v-if="league.defaultSettings.useSeed" md-label="Seed" md-sort-by="seed">
           <input :ref="'seedInput-' + item.id" @change="updateInput(item.id)" class="seed-input" type="number" step="1" min="1" max="" :value="item.seed">
@@ -193,6 +193,30 @@ export default {
       });
 
       this.league = response.data.league;
+    },
+    handlePricePaste(event, id) {
+      const clipboardText = (event.clipboardData || window.clipboardData).getData('text');
+      const lines = clipboardText.split(/\r\n|\r|\n/).map(line => line.trim()).filter(line => line !== "");
+
+      // Single value: let the browser's normal paste-into-field behavior happen.
+      if (lines.length <= 1) { return; }
+
+      event.preventDefault();
+
+      const startIndex = this.tournamentTeams.findIndex(team => team.id === id);
+      if (startIndex === -1) { return; }
+
+      lines.forEach((line, i) => {
+        const targetTeam = this.tournamentTeams[startIndex + i];
+        if (!targetTeam) { return; }
+
+        // If a name+price column was pasted by mistake, take the last column as the price.
+        const rawValue = line.split("\t").pop();
+        const parsed = parseFloat(rawValue.replace(/[^0-9.-]/g, ""));
+        if (!isNaN(parsed)) {
+          targetTeam.price = parsed;
+        }
+      });
     },
     updateInput(id) {
       console.log("This Ref id=> ", this.$refs['priceInput-' + id].value)
