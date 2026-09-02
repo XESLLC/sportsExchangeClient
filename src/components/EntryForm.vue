@@ -3,15 +3,22 @@
     <div class="md-layout">
       <div class="md-layout-item"></div>
       <md-field class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
-        <label>Entry Team Name</label>
+        <label>Entry Name</label>
         <md-input v-model="createEntryInput.name"></md-input>
         <span v-if="inputError === 'name'" class="error form-error">Please enter an entry name</span>
       </md-field>
-      <md-field class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
-        <label>Additional Owner Emails (optional, comma separated)</label>
-        <md-input v-model="additionalOwnerEmailsInput" placeholder="jane@example.com, sam@example.com"></md-input>
+      <div class="md-layout-item"></div>
+    </div>
+    <div class="md-layout">
+      <div class="md-layout-item"></div>
+      <div class="md-layout-item md-large-size-50 md-medium-size-50 md-small-size-75 md-xsmall-size-100">
+        <md-field>
+          <label>Additional Owner Email(s)</label>
+          <md-input v-model="additionalOwnerEmailsInput" placeholder="jane@example.com, sam@example.com"></md-input>
+        </md-field>
         <span class="hint">Each address must already have an account - they'll see this entry next time they log in.</span>
-      </md-field>
+      </div>
+      <div class="md-layout-item"></div>
     </div>
     <div class="md-layout">
       <div class="md-layout-item"></div>
@@ -99,4 +106,9 @@ export default {
 </script>
 
 <style scoped>
+.hint {
+  display: block;
+  margin-top: 8px;
+  text-align: left;
+}
 </style>

@@ -290,4 +290,9 @@ export default {
     display: block;
   }
 }
+
+.md-dialog-title {
+  display: block;
+  text-align: center;
+}
 </style>
