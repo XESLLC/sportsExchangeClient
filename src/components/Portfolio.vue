@@ -1,7 +1,7 @@
 <template>
   <div v-if="isPageReady" class="content-container">
     <div v-if="!entries">
-      You currently have no entries. Click <span class="link">here</span> to browse open contests.
+      You currently have no entries. Click <span class="link decorated-link" @click="$router.push({ name: 'Exchanges' })">here</span> to browse open contests.
     </div>
     <div v-else>
       <md-card>

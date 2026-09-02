@@ -22,7 +22,7 @@
           <div v-if="!isEditingMode">Password: {{placeholderPassword}}</div>
           <!-- <div>Balance: {{user.cash | toCurrency}}</div> -->
           <div v-if="!isEditingMode">Entries/Exchanges:
-            <span v-for="(entry, index) in userEntries" :key="entry.id" class="link" @click="goToPortfolio(entry)">{{entry.name}}<span v-if="userEntries.length > 1 && index !== userEntries.length -1" class="no-link">, </span></span>
+            <span v-for="(entry, index) in userEntries" :key="entry.id" class="link decorated-link" @click="goToPortfolio(entry)">{{entry.name}}<span v-if="userEntries.length > 1 && index !== userEntries.length -1" class="no-link">, </span></span>
           </div>
           <div class="notification-pref">
             <md-switch v-model="userInput.notifyOnMessageBoard" @change="saveNotificationPref" class="md-primary">

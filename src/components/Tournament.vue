@@ -3,7 +3,7 @@
     <div class="back-btn-container text-left">
       <div class="btn-wrapper" @click="currentSelectedView = 'main'">
         <md-icon class="fa fa-angle-left link"></md-icon>
-        <span class="link">Back</span>
+        <span class="link decorated-link">Back</span>
       </div>
     </div>
 

@@ -7,7 +7,7 @@
     </div>
     <div class="md-layout">
       <div class="md-layout-item">
-        <a v-if="isIpoOpen" class="link add-to-stock-link" @click="goToStockOrder()">Add to Stock Order</a>
+        <a v-if="isIpoOpen" class="link decorated-link add-to-stock-link" @click="goToStockOrder()">Add to Stock Order</a>
       </div>
       <div class="md-layout-item"></div>
       <div class="md-layout-item">

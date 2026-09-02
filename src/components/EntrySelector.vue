@@ -3,7 +3,7 @@
     <div v-if="value" class="entry-selector-current">
       <span class="entry-selector-name">{{ value.name }}</span>
       <span v-if="value.tournament && value.tournament.name" class="entry-selector-tournament">— {{ value.tournament.name }}</span>
-      <span class="entry-selector-switch link" @click="$emit('input', null)">Switch entry</span>
+      <span class="entry-selector-switch link decorated-link" @click="$emit('input', null)">Switch entry</span>
     </div>
     <div v-else>
       <h3 class="label">Select an Entry</h3>

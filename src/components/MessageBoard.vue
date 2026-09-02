@@ -56,7 +56,7 @@
       <div v-else>
         <div class="back-btn" @click="closeThread">
           <md-icon class="fa fa-angle-left link"></md-icon>
-          <span class="link">Back to threads</span>
+          <span class="link decorated-link">Back to threads</span>
         </div>
 
         <!-- Original post -->

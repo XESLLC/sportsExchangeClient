@@ -1,7 +1,7 @@
 <template>
   <div v-if="isPageReady" class="content-container">
     <div v-if="!entries">
-      You currently have no entries. Click <span class="link">here</span> to browse open contests.
+      You currently have no entries. Click <span class="link decorated-link" @click="$router.push({ name: 'Exchanges' })">here</span> to browse open contests.
     </div>
     <div v-else>
       <md-card>
@@ -46,7 +46,7 @@
             </div>
             <div v-if="contentToShow === 'ipo'">
               <ipo v-if="isTournamentIpoOpen" :tournament-id="selectedEntry.tournamentId" :entry-id="selectedEntry.id" :ipo-budget="ipoBudget" :ipo-cash-spent.sync="selectedEntry.ipoCashSpent"></ipo>
-              <div v-else class="ipo-closed-container">IPO purchasing window is closed. To view your current holdings, click <a class="link" @click="goToPortfolio()">here</a></div>
+              <div v-else class="ipo-closed-container">IPO purchasing window is closed. To view your current holdings, click <a class="link decorated-link" @click="goToPortfolio()">here</a></div>
             </div>
             <offers v-if="contentToShow === 'offers'" :tournament-id="selectedEntry.tournamentId" :entry-id="selectedEntry.id"></offers>
           </div>

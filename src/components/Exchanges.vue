@@ -14,7 +14,7 @@
           <md-table v-model="visibleTournaments" class="web-table text-left">
             <md-table-row slot="md-table-row" slot-scope="{ item }">
               <md-table-cell md-label="Tournament Name" md-sort-by="name">
-                <span class="tournament-link link" @click="goToTournamentHome(item.id)">{{ item.leagueName }} - {{ item.name }}</span>
+                <span class="tournament-link link decorated-link" @click="goToTournamentHome(item.id)">{{ item.leagueName }} - {{ item.name }}</span>
               </md-table-cell>
               <md-table-cell v-if="!isAdmin" md-label="My Entries">
                 <div v-if="userHasTournamentEntries(item.id)">
@@ -36,7 +36,7 @@
               <md-table-cell>
                 <div class="mobile-row">
                   <div class="mobile-header">Tournament Name</div>
-                  <div class="tournament-link link" @click="goToTournamentHome(tournament.id)">{{tournament.name}}</div>
+                  <div class="tournament-link link decorated-link" @click="goToTournamentHome(tournament.id)">{{tournament.name}}</div>
                 </div>
 
                 <div class="mobile-row" v-if="userHasTournamentEntries(tournament.id)">
@@ -267,8 +267,6 @@ export default {
 
 .tournament-link {
   font-weight: bold;
-  color: #487233;
-  text-decoration: underline;
 }
 
 .tournament-closed-label {
