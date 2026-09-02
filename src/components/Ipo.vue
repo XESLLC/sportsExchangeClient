@@ -32,6 +32,8 @@
       <div class="md-layout-item"></div>
       <div class="md-layout-item"></div>
       <div class="md-layout-item">
+        Checkout Total: {{checkoutTotal | toCurrency}}
+        <div v-if="checkoutTotal > ipoBudget - ipoCashSpent">Checkout would exceed max IPO budget</div>
         <md-button v-if="checkoutTotal > 0 && checkoutTotal <= ipoBudget - ipoCashSpent" class="md-raised md-primary" @click="placeOrderPressed()">Place Order</md-button>
         <md-button v-else disabled>Place Order</md-button>
       </div>
