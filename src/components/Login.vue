@@ -88,6 +88,9 @@ export default {
       this.$router.push({ name: "Home" });
     },
     async completeLogin() {
+      const tokenInfo = await this.$auth.getIdTokenClaims();
+      sessionStorage.setItem('sports-exchange.token', tokenInfo.__raw);
+
       const email = this.$auth.user.email;
       const username = this.$auth.user.nickname;
       const firstname = this.$auth.user['https://sports-exchange/firstname'] || 'exchange';
