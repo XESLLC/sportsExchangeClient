@@ -86,7 +86,14 @@ export default {
         }
       }
       this.$root.$emit('sports-exchange-auth-updated');
-      this.$router.push({ name: "Home" });
+
+      const postLoginRedirect = sessionStorage.getItem('sports-exchange.postLoginRedirect');
+      if (postLoginRedirect) {
+        sessionStorage.removeItem('sports-exchange.postLoginRedirect');
+        this.$router.push(postLoginRedirect);
+      } else {
+        this.$router.push({ name: "Home" });
+      }
     },
     async completeLogin() {
       const tokenInfo = await this.$auth.getIdTokenClaims();

@@ -45,6 +45,7 @@ import Entry from './components/Entry';
 import Exchanges from './components/Exchanges';
 import EditEntryData from './components/EditEntryData';
 import TournamentHome from './components/TournamentHome';
+import ConfirmEmail from './components/ConfirmEmail';
 
 const router = new Router({
   mode: 'history',
@@ -53,6 +54,12 @@ const router = new Router({
       path: '/login',
       name: 'Login',
       component: Login
+    },
+    {
+      path: '/confirm-email/:token',
+      name: 'ConfirmEmail',
+      component: ConfirmEmail,
+      props: true
     },
     {
       path: '/',

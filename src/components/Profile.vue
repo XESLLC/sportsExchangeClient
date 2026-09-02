@@ -29,6 +29,14 @@
               Email me when a new message board thread is posted
             </md-switch>
           </div>
+          <div class="email-confirmation">
+            <span v-if="user.emailConfirmedAt">✓ Email confirmed on {{ formatDate(user.emailConfirmedAt) }}</span>
+            <span v-else>
+              ⚠ Email not yet confirmed
+              <md-button :disabled="confirmationSending" class="md-primary confirmation-btn" @click="sendConfirmationEmail">Send Confirmation Email</md-button>
+            </span>
+            <div v-if="confirmationMessage" class="confirmation-message">{{ confirmationMessage }}</div>
+          </div>
         </div>
       </md-card-content>
 
@@ -58,7 +66,9 @@ export default {
       isEditingMode: false,
       userInput: {},
       successMessage: null,
-      userEntries: null
+      userEntries: null,
+      confirmationSending: false,
+      confirmationMessage: null
     }
   },
   methods: {
@@ -74,7 +84,8 @@ export default {
               cash,
               username,
               phoneNumber,
-              notifyOnMessageBoard
+              notifyOnMessageBoard,
+              emailConfirmedAt
             }
           }
         `,
@@ -166,7 +177,8 @@ export default {
               cash,
               username,
               phoneNumber,
-              notifyOnMessageBoard
+              notifyOnMessageBoard,
+              emailConfirmedAt
             }
           }
         `,
@@ -182,6 +194,36 @@ export default {
       this.userInput.phoneNumber = this.user.phoneNumber;
       this.userInput.username = this.user.username;
       this.userInput.notifyOnMessageBoard = !!this.user.notifyOnMessageBoard;
+    },
+    formatDate(dateString) {
+      return new Date(parseInt(dateString) || dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    },
+    async sendConfirmationEmail() {
+      this.confirmationSending = true;
+      this.confirmationMessage = null;
+      try {
+        const response = await apolloClient.mutate({
+          mutation: gql`
+            mutation SendEmailConfirmation($email: String!) {
+              sendEmailConfirmation(email: $email)
+            }
+          `,
+          variables: {
+            email: this.user.email
+          }
+        });
+
+        this.confirmationMessage = response.data.sendEmailConfirmation
+          ? "Confirmation email sent! Check your inbox (and spam folder)."
+          : "Could not send the confirmation email - please try again in a moment.";
+      } catch(err) {
+        this.confirmationMessage = "Could not send the confirmation email - please try again in a moment.";
+      }
+      this.confirmationSending = false;
     },
   },
   async created() {
@@ -212,6 +254,19 @@ export default {
 
 .notification-pref {
   margin-top: 12px;
+}
+
+.email-confirmation {
+  margin-top: 12px;
+}
+
+.confirmation-btn {
+  margin-left: 8px;
+}
+
+.confirmation-message {
+  margin-top: 8px;
+  font-size: 0.9em;
 }
 
 @media screen and (max-width: 820px){
