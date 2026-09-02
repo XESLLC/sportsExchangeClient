@@ -81,10 +81,13 @@ export default {
   },
   watch: {
     $route() {
-      this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+      this.refreshIsAdmin();
     }
   },
   methods: {
+    refreshIsAdmin() {
+      this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+    },
     goToRoute(routeName) {
       if(this.$route.name !== routeName) {
         this.$router.push({ name: routeName });
@@ -101,8 +104,12 @@ export default {
     }
   },
   async created() {
-    this.isAdmin = sessionStorage.getItem('sports-exchange.isAdmin') === 'true';
+    this.refreshIsAdmin();
     this.isPageReady = true;
+    this.$root.$on('sports-exchange-auth-updated', this.refreshIsAdmin);
+  },
+  beforeDestroy() {
+    this.$root.$off('sports-exchange-auth-updated', this.refreshIsAdmin);
   }
 }
 </script>

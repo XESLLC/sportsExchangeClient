@@ -85,6 +85,7 @@ export default {
           sessionStorage.setItem('sports-exchange.isAdmin', 'false');
         }
       }
+      this.$root.$emit('sports-exchange-auth-updated');
       this.$router.push({ name: "Home" });
     },
     async completeLogin() {
