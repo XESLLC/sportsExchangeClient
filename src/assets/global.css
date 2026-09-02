@@ -1,3 +1,7 @@
+html, body {
+  font-family: 'Inter', sans-serif;
+}
+
 .md-app-toolbar {
   height: 64px !important;
 }
