@@ -27,6 +27,9 @@
             <div class="md-layout-item"></div>
           </div>
           <div v-if="selectedEntry">
+            <div class="exchange-home-link-row">
+              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+            </div>
             <div v-if="successMessage" class="alert-padding alert-success">
               {{successMessage}}
               <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
@@ -67,6 +70,9 @@
             </div>
             <portfolio-rankings v-if="contentToShow === 'rankings'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-rankings>
             <entry-owners v-if="contentToShow === 'owners'" :entry-id="selectedEntry.id"></entry-owners>
+            <div class="exchange-home-link-row">
+              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+            </div>
           </div>
         </md-card-content>
       </md-card>
@@ -165,6 +171,9 @@ export default {
     }
   },
   methods: {
+    goToTournamentHome() {
+      this.$router.push({ name: 'TournamentHome', params: { tournamentId: this.selectedEntry.tournamentId } });
+    },
     sortPayouts(field) {
       if (this.payoutSortField === field) {
         this.payoutSortOrder = this.payoutSortOrder === 'asc' ? 'desc' : 'asc';
@@ -319,6 +328,11 @@ export default {
 </script>
 
 <style scoped>
+.exchange-home-link-row {
+  text-align: left;
+  margin: 12px 0;
+}
+
 .alert-padding {
   margin-top: 20px;
 }
