@@ -15,15 +15,31 @@
     <div v-if="selectedBidInput">
       <div class="md-layout">
         <md-field>
+          <label>Quantity</label>
+          <md-input v-model="selectedBidInput.quantity" type="number" min="1"></md-input>
+        </md-field>
+      </div>
+      <h3 class="label">Select Bid Type</h3>
+      <select class="custom-select" name="basic-dropdown" v-model="bidType">
+        <option value="CASH">Cash</option>
+        <option value="STOCK">Stock</option>
+      </select>
+      <div class="md-layout" v-if="bidType === 'CASH'">
+        <md-field>
           <label>Max Buy Price</label>
           <currency-input :currency-to-format.sync="selectedBidInput.maxBuyPrice" :allows-negative="false"></currency-input>
         </md-field>
       </div>
-      <div class="md-layout">
-        <md-field>
-          <label>Quantity</label>
-          <md-input v-model="selectedBidInput.quantity" type="number" min="1"></md-input>
-        </md-field>
+      <div class="md-layout" v-if="bidType === 'STOCK'">
+        <div class="setup-help text-left">Choose which of your own teams you'll pay with.</div>
+        <md-table v-model="filteredTradableTeamInput" md-sort="teamName" class="text-left" md-sort-order="asc">
+          <md-table-row slot="md-table-row" slot-scope="{ item }">
+            <md-table-cell md-label="Team" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
+            <md-table-cell md-label="Quantity">
+              <input :ref="'quantityInput-' + item.tournamentTeamId" @change="setTradableTeamQuantity(item.tournamentTeamId)" @keyup="setTradableTeamQuantity(item.tournamentTeamId)" :value="item.quantity" class="quantity-input" type="number" step="1" min="0" :max="item.quantityOwned">
+            </md-table-cell>
+          </md-table-row>
+        </md-table>
       </div>
       <div class="md-layout">
         <div>
@@ -37,10 +53,10 @@
       {{errorMessage}}
     </div>
     <md-card-actions>
-      <span class="submit-confirmation" v-if="selectedBidInput && selectedBidInput.quantity && selectedBidInput.quantity > 0 && selectedBidInput.maxBuyPrice">
+      <span class="submit-confirmation" v-if="canSubmit">
         Are you sure you want to submit this bid?
       </span>
-      <md-button :disabled="httpWait" v-if="selectedBidInput && selectedBidInput.quantity && selectedBidInput.quantity > 0 && selectedBidInput.maxBuyPrice" class="md-primary" :class="{ 'btn-disabled' : httpWait }" @click="submit">
+      <md-button :disabled="httpWait" v-if="canSubmit" class="md-primary" :class="{ 'btn-disabled' : httpWait }" @click="submit">
         Submit
         <md-progress-spinner v-if="httpWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
       </md-button>
@@ -77,7 +93,22 @@ export default {
       httpWait: false,
       expiresHoursMinutes: {},
       startOfDayMillis: null,
-      expiresDateInput: null
+      expiresDateInput: null,
+      bidType: "CASH",
+      availableStocks: null,
+      tradableTeamInput: [],
+      filteredTradableTeamInput: []
+    }
+  },
+  computed: {
+    canSubmit() {
+      if(!this.selectedBidInput || !this.selectedBidInput.quantity || this.selectedBidInput.quantity <= 0) {
+        return false;
+      }
+      if(this.bidType === 'CASH') {
+        return !!this.selectedBidInput.maxBuyPrice;
+      }
+      return this.filteredTradableTeamInput.some(team => team.quantity > 0);
     }
   },
   props: {
@@ -104,6 +135,11 @@ export default {
     }
   },
   watch: {
+    selectedBidInput(val) {
+      if(val) {
+        this.filteredTradableTeamInput = this.tradableTeamInput.filter(team => team.teamId !== val.teamId);
+      }
+    },
     expiresHoursMinutes: {
       handler(val) {
         if(val) {
@@ -122,6 +158,32 @@ export default {
     checkIfValueChanged() {
       this.startOfDayMillis = DateTime.fromJSDate(this.datePickerInput, { zone: "America/New_York" }).startOf('day').toMillis();
       this.expiresDateInput = DateTime.fromMillis(this.startOfDayMillis).plus({ hours: this.expiresHoursMinutes.hour, minutes: this.expiresHoursMinutes.minute }).toMillis();
+    },
+    async getStocksForEntry() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query StocksByEntryId($entryId: ID!) {
+            stocksByEntryId(entryId: $entryId) {
+              teamName,
+              teamId,
+              tournamentTeamId,
+              ipoPrice,
+              quantity
+            }
+          }
+        `,
+        variables: {
+          entryId: this.entryId
+        }
+      });
+
+      this.availableStocks = response.data.stocksByEntryId;
+    },
+    setTradableTeamQuantity(tournamentTeamId) {
+      const inputValue = this.$refs['quantityInput-' + tournamentTeamId].value;
+      const index = this.filteredTradableTeamInput.findIndex(team => team.tournamentTeamId === tournamentTeamId);
+      this.filteredTradableTeamInput[index].quantity = inputValue;
     },
     async fetchTournamentTeams() {
       const response = await apolloClient.query({
@@ -155,10 +217,30 @@ export default {
         const input = {
           entryId: this.entryId,
           tournamentTeamId: this.selectedBidInput.id,
-          price: parseFloat(this.selectedBidInput.maxBuyPrice),
           quantity: parseInt(this.selectedBidInput.quantity),
-          expiresAt
+          expiresAt,
+          price: null,
+          tradableTeams: null
         };
+
+        if(this.bidType === 'CASH') {
+          input.price = parseFloat(this.selectedBidInput.maxBuyPrice);
+        } else {
+          input.tradableTeams = this.filteredTradableTeamInput
+            .filter(team => team.quantity > 0)
+            .map(team => ({
+              tournamentTeamId: team.tournamentTeamId,
+              teamName: team.teamName,
+              quantity: parseInt(team.quantity),
+              price: 0
+            }));
+
+          if(input.tradableTeams.length < 1) {
+            this.errorMessage = "At least one team must be selected to pay with";
+            this.httpWait = false;
+            return;
+          }
+        }
         try {
           const response = await apolloClient.mutate({
             mutation: gql`
@@ -213,6 +295,15 @@ export default {
   },
   async created() {
     await this.fetchTournamentTeams();
+    await this.getStocksForEntry();
+    this.tradableTeamInput = this.availableStocks.map((stock) => {
+      return {
+        ...stock,
+        quantityOwned: stock.quantity,
+        quantity: 0
+      }
+    });
+    this.filteredTradableTeamInput = this.tradableTeamInput;
     this.startOfDayMillis = DateTime.fromJSDate(this.datePickerInput, { zone: "America/New_York" }).startOf('day').toMillis();
     this.$set(this.expiresHoursMinutes, 'hour', DateTime.fromMillis(this.startOfDayMillis).hour);
     this.$set(this.expiresHoursMinutes, 'minute', DateTime.fromMillis(this.startOfDayMillis).minute);
@@ -237,5 +328,15 @@ export default {
 <style scoped>
 .submit-confirmation {
   padding-right: 20px;
+}
+
+.setup-help {
+  margin: 8px 0;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.quantity-input {
+  width: 60px;
 }
 </style>

@@ -12,6 +12,11 @@
       </md-table-row>
 
       <md-table-row>
+        <md-table-cell class="text-left">Total $ Invested</md-table-cell>
+        <md-table-cell>{{portfolioSummary.totalCashInvested | toCurrency}}</md-table-cell>
+      </md-table-row>
+
+      <md-table-row>
         <md-table-cell class="text-left">Total Initial Stocks Owned</md-table-cell>
         <md-table-cell>{{portfolioSummary.totalInitialStocksOwned}}</md-table-cell>
       </md-table-row>
@@ -102,6 +107,7 @@ export default {
                 ownerName,
                 entryName,
                 totalInitialInvestment,
+                totalCashInvested,
                 totalInitialStocksOwned,
                 totalCurrentStocksOwned,
                 stocksRemaining,
