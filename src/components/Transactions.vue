@@ -33,6 +33,9 @@
             <div class="md-layout-item"></div>
           </div>
           <div v-if="selectedEntry">
+            <div class="exchange-home-link-row">
+              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+            </div>
             <div class="budget-container">
               <div>IPO Budget: {{ipoBudget | toCurrency}}</div>
               <div>IPO Budget Spent: {{selectedEntry.ipoCashSpent | toCurrency}}</div>
@@ -49,6 +52,9 @@
               <div v-else class="ipo-closed-container">IPO purchasing window is closed. To view your current holdings, click <a class="link decorated-link" @click="goToPortfolio()">here</a></div>
             </div>
             <offers v-if="contentToShow === 'offers'" :tournament-id="selectedEntry.tournamentId" :entry-id="selectedEntry.id"></offers>
+            <div class="exchange-home-link-row">
+              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+            </div>
           </div>
         </md-card-content>
       </md-card>
@@ -237,6 +243,9 @@ export default {
         }
       });
     },
+    goToTournamentHome() {
+      this.$router.push({ name: 'TournamentHome', params: { tournamentId: this.selectedEntry.tournamentId } });
+    },
     showContent(content) {
       this.contentToShow = content;
     }
@@ -249,6 +258,11 @@ export default {
 </script>
 
 <style scoped>
+.exchange-home-link-row {
+  text-align: left;
+  margin: 12px 0;
+}
+
 .ipo-closed-container {
   padding-top: 30px;
 }
