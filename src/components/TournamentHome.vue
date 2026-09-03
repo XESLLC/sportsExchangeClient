@@ -1,7 +1,8 @@
 <template>
   <div v-if="isPageReady" class="content-container">
     <md-card class="section-card">
-      <md-card-header>
+      <md-card-header class="header-ribbon">
+        <div class="exchange-home-label">Exchange Home</div>
         <div class="md-title title-select-wrapper">
           <md-select v-if="activeTournaments.length > 1" :value="tournamentId" @md-selected="switchTournament" class="title-select">
             <md-option v-for="t in activeTournaments" :key="t.id" :value="t.id">
@@ -266,10 +267,37 @@ export default {
   margin-bottom: 24px;
 }
 
+.header-ribbon {
+  background: #474C45;
+  border-radius: 4px 4px 0 0;
+  padding: 16px 24px !important;
+}
+
+.exchange-home-label {
+  text-align: center;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #8fe37e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
 .title-select-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+}
+
+.header-ribbon ::v-deep .md-select .md-input {
+  color: #fff !important;
+}
+
+.header-ribbon ::v-deep .md-select-icon {
+  color: #fff !important;
 }
 
 .title-select {
