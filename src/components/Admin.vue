@@ -167,7 +167,9 @@ export default {
       });
 
       this.leagues = response.data.leagues;
-      this.tournaments = this.leagues.flatMap(league => league.tournaments);
+      this.tournaments = this.leagues
+        .flatMap(league => league.tournaments)
+        .sort((a, b) => parseInt(b.createdAt) - parseInt(a.createdAt));
     },
     formatDate(timestamp) {
       const date = new Date(timestamp).toLocaleString('en-US', {
