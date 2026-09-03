@@ -47,6 +47,16 @@
       </md-card-content>
     </md-card>
 
+    <!-- Total Pot -->
+    <md-card class="section-card">
+      <md-card-header>
+        <div class="md-title">Total Pot</div>
+      </md-card-header>
+      <md-card-content>
+        <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
+      </md-card-content>
+    </md-card>
+
     <!-- Message Board -->
     <md-card class="section-card">
       <md-card-header>
@@ -139,6 +149,7 @@ export default {
     return {
       isPageReady: false,
       tournamentName: '',
+      totalPot: 0,
       rankedSummaries: [],
       myEntries: [],
       totalEntries: 0,
@@ -193,12 +204,14 @@ export default {
             tournament(id: $id) {
               id
               name
+              totalPot
             }
           }
         `,
         variables: { id: this.tournamentId }
       });
       this.tournamentName = response.data.tournament.name;
+      this.totalPot = response.data.tournament.totalPot;
     },
     async fetchUserEntries() {
       const email = sessionStorage.getItem('sports-exchange.email');
@@ -334,6 +347,14 @@ export default {
 
 .section-heading {
   margin: 0 0 16px;
+}
+
+.total-pot-amount {
+  text-align: center;
+  font-size: 2.2em;
+  font-weight: bold;
+  color: #24E22C;
+  padding: 8px 0;
 }
 
 .my-entries-grid {
