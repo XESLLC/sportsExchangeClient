@@ -63,7 +63,7 @@
         <div class="md-title">Message Board</div>
       </md-card-header>
       <md-card-content>
-        <message-board :tournament-id="tournamentId"></message-board>
+        <message-board :tournament-id="tournamentId" :preview-count="2"></message-board>
       </md-card-content>
     </md-card>
 

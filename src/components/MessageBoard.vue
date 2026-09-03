@@ -12,7 +12,7 @@
     <div v-else>
       <!-- Thread list view -->
       <div v-if="!activeThread">
-        <div class="board-actions">
+        <div v-if="!previewCount" class="board-actions">
           <md-button class="md-primary md-raised" @click="showNewThreadForm = !showNewThreadForm">
             {{ showNewThreadForm ? 'Cancel' : 'New Thread' }}
           </md-button>
@@ -37,11 +37,11 @@
           </md-button>
         </div>
 
-        <div v-if="threads.length === 0" class="no-threads">
-          No posts yet — start a new thread above.
+        <div v-if="visibleThreads.length === 0" class="no-threads">
+          No posts yet<template v-if="!previewCount"> — start a new thread above.</template>
         </div>
 
-        <div v-for="thread in threads" :key="thread.id" class="thread-row link" @click="openThread(thread)">
+        <div v-for="thread in visibleThreads" :key="thread.id" class="thread-row link" @click="openThread(thread)">
           <div class="thread-title">{{ thread.title }}</div>
           <div class="thread-meta">
             {{ thread.authorFirstName }} {{ thread.authorLastName }}
@@ -49,6 +49,10 @@
             &middot; {{ getReadableDate(thread.createdAt) }}
             &middot; {{ thread.replies.length }} {{ thread.replies.length === 1 ? 'reply' : 'replies' }}
           </div>
+        </div>
+
+        <div v-if="previewCount" class="view-full-board-row">
+          <span class="link decorated-link" @click="goToFullBoard">View Full Message Board &rarr;</span>
         </div>
       </div>
 
@@ -155,9 +159,24 @@ export default {
   props: {
     tournamentId: {
       type: String
+    },
+    // When set, caps the thread list to the N newest threads and swaps
+    // thread composing (New Thread button) for a link to the full board -
+    // used to embed a condensed preview on Exchange Home.
+    previewCount: {
+      type: Number,
+      default: null
+    }
+  },
+  computed: {
+    visibleThreads() {
+      return this.previewCount ? this.threads.slice(0, this.previewCount) : this.threads;
     }
   },
   methods: {
+    goToFullBoard() {
+      this.$router.push({ name: 'TournamentMessageBoard', params: { tournamentId: this.tournamentId } });
+    },
     async fetchThreads() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
@@ -371,5 +390,11 @@ export default {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid #eee;
+}
+
+.view-full-board-row {
+  margin-top: 12px;
+  text-align: center;
+  font-weight: 600;
 }
 </style>
