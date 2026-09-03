@@ -337,6 +337,8 @@ export default {
 .header-ribbon .md-title {
   color: #fff;
   margin-top: 4px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .header-ribbon ::v-deep .breadcrumbs {

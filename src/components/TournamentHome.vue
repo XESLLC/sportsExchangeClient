@@ -2,21 +2,30 @@
   <div v-if="isPageReady" class="content-container">
     <md-card class="section-card">
       <md-card-header class="header-ribbon">
-        <div class="exchange-home-label">Exchange Home</div>
+        <div class="md-title exchange-home-label">Exchange Home</div>
         <div class="md-title title-select-wrapper">
-          <md-select v-if="activeTournaments.length > 1" :value="tournamentId" @md-selected="switchTournament" class="title-select">
-            <md-option v-for="t in activeTournaments" :key="t.id" :value="t.id">
+          <span>{{ tournamentName }}</span>
+        </div>
+        <div v-if="activeTournaments.length > 1" class="exchange-switcher">
+          <span v-if="!showExchangeSwitcher" class="link decorated-link switch-exchange-link" @click="showExchangeSwitcher = true">Switch Exchange</span>
+          <div v-else class="exchange-switcher-list">
+            <div
+              v-for="t in activeTournaments"
+              :key="t.id"
+              class="exchange-switcher-item link"
+              @click="switchTournament(t.id)"
+            >
               {{ t.leagueName }} - {{ t.name }}
-            </md-option>
-          </md-select>
-          <span v-else>{{ tournamentName }}</span>
+            </div>
+            <span class="link decorated-link switch-exchange-link" @click="showExchangeSwitcher = false">Cancel</span>
+          </div>
         </div>
       </md-card-header>
 
       <md-card-content>
         <!-- My Entries -->
         <div v-if="myEntries.length > 0" class="my-entries-section">
-          <h3 class="section-heading">My Entries</h3>
+          <div class="md-title section-heading">My Entries</div>
           <div class="my-entries-grid">
             <div v-for="entry in myEntries" :key="entry.entryName" class="entry-card">
               <div class="entry-card-name">{{ entry.entryName }}</div>
@@ -135,18 +144,21 @@ export default {
       totalEntries: 0,
       rankingsError: false,
       myEntryNames: [],
-      activeTournaments: []
+      activeTournaments: [],
+      showExchangeSwitcher: false
     }
   },
   watch: {
     async tournamentId() {
       this.isPageReady = false;
+      this.showExchangeSwitcher = false;
       await this.init();
       this.isPageReady = true;
     }
   },
   methods: {
     switchTournament(tournamentId) {
+      this.showExchangeSwitcher = false;
       if (tournamentId !== this.tournamentId) {
         this.$router.push({ name: 'TournamentHome', params: { tournamentId } });
       }
@@ -275,11 +287,7 @@ export default {
 
 .exchange-home-label {
   text-align: center;
-  font-size: 0.8em;
-  font-weight: 600;
   color: #8fe37e;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   margin-bottom: 4px;
 }
 
@@ -292,26 +300,40 @@ export default {
   color: #fff;
 }
 
-.header-ribbon ::v-deep .md-select .md-input {
-  color: #fff !important;
+.exchange-switcher {
+  text-align: center;
+  margin-top: 6px;
 }
 
-.header-ribbon ::v-deep .md-select-icon {
-  color: #fff !important;
+.switch-exchange-link {
+  color: #8fe37e;
+  font-size: 0.85em;
+  font-weight: 600;
 }
 
-.title-select {
-  font-size: inherit;
-  font-weight: inherit;
-  padding: 0;
-  margin: 0;
-  min-width: 0;
+.switch-exchange-link:hover {
+  color: #b9f0ae;
+}
+
+.exchange-switcher-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.exchange-switcher-item {
+  color: #fff;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.exchange-switcher-item:hover {
+  color: #8fe37e;
 }
 
 .section-heading {
   margin: 0 0 16px;
-  font-size: 1.1em;
-  font-weight: bold;
 }
 
 .my-entries-grid {
