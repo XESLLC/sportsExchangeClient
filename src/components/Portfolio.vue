@@ -265,6 +265,7 @@ export default {
               id,
               name,
               tournamentId,
+              createdAt,
               tournament {
                 name,
                 leagueId,

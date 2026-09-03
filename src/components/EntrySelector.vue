@@ -18,7 +18,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in entries" :key="item.id" class="entry-selector-row" @click="$emit('input', item)">
+            <tr v-for="item in sortedEntries" :key="item.id" class="entry-selector-row" @click="$emit('input', item)">
               <td><span class="link">{{ item.name }}</span></td>
               <td>{{ item.tournament && item.tournament.name }}</td>
             </tr>
@@ -43,6 +43,11 @@ export default {
     value: {
       type: Object,
       default: null
+    }
+  },
+  computed: {
+    sortedEntries() {
+      return [...this.entries].sort((a, b) => parseInt(b.createdAt) - parseInt(a.createdAt));
     }
   }
 }

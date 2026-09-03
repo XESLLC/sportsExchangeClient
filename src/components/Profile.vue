@@ -155,6 +155,7 @@ export default {
               id,
               name,
               tournamentId,
+              createdAt,
               tournament {
                 name,
                 status,
@@ -172,8 +173,9 @@ export default {
         }
       });
 
-      this.userEntries = response.data.userEntries;
-      this.userEntries = this.userEntries.filter(entry => entry.tournament.status !== 'inactive');
+      this.userEntries = response.data.userEntries
+        .filter(entry => entry.tournament.status !== 'inactive')
+        .sort((a, b) => parseInt(b.createdAt) - parseInt(a.createdAt));
     },
     goToPortfolio(entry) {
       this.$router.push({ 
