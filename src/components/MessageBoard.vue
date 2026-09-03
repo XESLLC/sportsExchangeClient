@@ -99,6 +99,12 @@
           </md-button>
         </div>
       </div>
+
+      <div v-if="user" class="notify-pref-footer">
+        <md-switch v-model="user.notifyOnMessageBoard" @change="saveNotificationPref" class="md-primary">
+          Email me when a new message board thread is posted
+        </md-switch>
+      </div>
     </div>
   </div>
 </template>
@@ -142,7 +148,8 @@ export default {
       newThreadBody: '',
       replyBody: '',
       postWait: false,
-      serverError: null
+      serverError: null,
+      user: null
     }
   },
   props: {
@@ -217,11 +224,52 @@ export default {
     },
     getReadableDate(dateString) {
       return new Date(dateString).toLocaleString();
+    },
+    async fetchUserNotificationPref() {
+      const email = sessionStorage.getItem('sports-exchange.email');
+      if (!email) return;
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query User($email: String!) {
+            user(email: $email) {
+              firstname, lastname, email, username, phoneNumber, notifyOnMessageBoard
+            }
+          }
+        `,
+        variables: { email }
+      });
+      this.user = response.data.user;
+    },
+    async saveNotificationPref() {
+      if (!this.user) return;
+      try {
+        await apolloClient.mutate({
+          mutation: gql`
+            mutation UpdateUser($userInput: UserInput!) {
+              updateUser(input: $userInput) { notifyOnMessageBoard }
+            }
+          `,
+          variables: {
+            userInput: {
+              firstname: this.user.firstname,
+              lastname: this.user.lastname,
+              email: this.user.email,
+              username: this.user.username,
+              phoneNumber: this.user.phoneNumber,
+              notifyOnMessageBoard: this.user.notifyOnMessageBoard
+            }
+          }
+        });
+      } catch (err) {
+        this.serverError = err.graphQLErrors?.[0]?.message || 'Failed to update notification preference';
+      }
     }
   },
   async created() {
     try {
       await this.fetchThreads();
+      await this.fetchUserNotificationPref();
     } catch (err) {
       this.serverError = err.graphQLErrors?.[0]?.message || 'Failed to load message board';
     }
@@ -317,5 +365,11 @@ export default {
 
 .btn-spin {
   margin-left: 8px;
+}
+
+.notify-pref-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
 }
 </style>
