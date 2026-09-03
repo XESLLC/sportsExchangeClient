@@ -134,7 +134,9 @@ export default {
       // Inactive tournaments stay hidden entirely (unchanged from before).
       // Closed tournaments remain visible so people can see history - they
       // just won't have a "Create New Entry" option (see template above).
-      this.visibleTournaments = this.tournaments.filter(tournament => tournament.status !== 'inactive');
+      this.visibleTournaments = this.tournaments
+        .filter(tournament => tournament.status !== 'inactive')
+        .sort((a, b) => parseInt(b.createdAt) - parseInt(a.createdAt));
     },
     goToEntry(entryId) {
       this.$router.push({
