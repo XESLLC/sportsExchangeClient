@@ -36,7 +36,7 @@
           </div>
           <div v-if="selectedEntry">
             <div class="exchange-home-link-row">
-              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+              <span class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ tournamentName }} Exchange Home</span>
             </div>
             <div class="budget-container">
               <div>IPO Budget: {{ipoBudget | toCurrency}}</div>
@@ -55,7 +55,7 @@
             </div>
             <offers v-if="contentToShow === 'offers'" :tournament-id="selectedEntry.tournamentId" :entry-id="selectedEntry.id"></offers>
             <div class="exchange-home-link-row">
-              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+              <span class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ tournamentName }} Exchange Home</span>
             </div>
           </div>
         </md-card-content>
@@ -299,6 +299,11 @@ export default {
 .exchange-home-link-row {
   text-align: left;
   margin: 12px 0;
+}
+
+.exchange-home-link {
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .ipo-closed-container {

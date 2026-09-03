@@ -30,7 +30,7 @@
           </div>
           <div v-if="selectedEntry">
             <div class="exchange-home-link-row">
-              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+              <span class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ selectedEntry.tournament && selectedEntry.tournament.name }} Exchange Home</span>
             </div>
             <div v-if="successMessage" class="alert-padding alert-success">
               {{successMessage}}
@@ -73,7 +73,7 @@
             <portfolio-rankings v-if="contentToShow === 'rankings'" :entry-id="selectedEntry.id" :tournament-id="selectedEntry.tournamentId"></portfolio-rankings>
             <entry-owners v-if="contentToShow === 'owners'" :entry-id="selectedEntry.id"></entry-owners>
             <div class="exchange-home-link-row">
-              <span class="link decorated-link" @click="goToTournamentHome()">Exchange Home</span>
+              <span class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ selectedEntry.tournament && selectedEntry.tournament.name }} Exchange Home</span>
             </div>
           </div>
         </md-card-content>
@@ -369,6 +369,11 @@ export default {
 .exchange-home-link-row {
   text-align: left;
   margin: 12px 0;
+}
+
+.exchange-home-link {
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .alert-padding {
