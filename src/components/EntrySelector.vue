@@ -57,8 +57,12 @@ export default {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 8px 0 16px 0;
+  padding: 10px 16px;
+  margin-bottom: 8px;
   font-size: 17px;
+  background: #eef4ec;
+  border-left: 4px solid #24E22C;
+  border-radius: 4px;
 }
 
 .entry-selector-name {

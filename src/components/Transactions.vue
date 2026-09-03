@@ -5,7 +5,7 @@
     </div>
     <div v-else>
       <md-card>
-        <md-card-header>
+        <md-card-header class="header-ribbon">
           <breadcrumbs :crumbs="breadcrumbCrumbs"></breadcrumbs>
           <div class="md-title">Transactions</div>
         </md-card-header>
@@ -18,11 +18,13 @@
           <span @click="serverError = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
         </div>
 
-        <md-tabs v-if="selectedEntry" md-alignment="centered">
-          <md-tab v-if="isTournamentIpoOpen" md-label="IPO" @click="showContent('ipo')"></md-tab>
-          <md-tab md-label="Offers" @click="showContent('offers')"></md-tab>
-          <md-tab v-if="!isTournamentIpoOpen" md-label="IPO" @click="showContent('ipo')"></md-tab>
-        </md-tabs>
+        <div v-if="selectedEntry" class="tabs-ribbon">
+          <md-tabs md-alignment="centered">
+            <md-tab v-if="isTournamentIpoOpen" md-label="IPO" @click="showContent('ipo')"></md-tab>
+            <md-tab md-label="Offers" @click="showContent('offers')"></md-tab>
+            <md-tab v-if="!isTournamentIpoOpen" md-label="IPO" @click="showContent('ipo')"></md-tab>
+          </md-tabs>
+        </div>
 
         <md-card-content>
           <div class="md-layout">
@@ -258,6 +260,42 @@ export default {
 </script>
 
 <style scoped>
+.header-ribbon {
+  background: #474C45;
+  border-radius: 4px 4px 0 0;
+  padding: 16px 24px !important;
+}
+
+.header-ribbon .md-title {
+  color: #fff;
+  margin-top: 4px;
+}
+
+.header-ribbon ::v-deep .breadcrumbs {
+  color: rgba(255, 255, 255, .75);
+}
+
+.header-ribbon ::v-deep .breadcrumb-link {
+  color: #a9e6a0;
+}
+
+.header-ribbon ::v-deep .breadcrumb-current {
+  color: #fff;
+}
+
+.header-ribbon ::v-deep .breadcrumb-separator {
+  color: rgba(255, 255, 255, .5);
+}
+
+.tabs-ribbon {
+  background: #dbe4d6;
+  padding: 4px 8px 0;
+}
+
+.tabs-ribbon ::v-deep .md-tabs-navigation {
+  background: transparent !important;
+}
+
 .exchange-home-link-row {
   text-align: left;
   margin: 12px 0;
