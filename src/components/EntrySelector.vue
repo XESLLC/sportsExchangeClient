@@ -6,16 +6,25 @@
       <span class="entry-selector-switch link decorated-link" @click="$emit('input', null)">Switch entry</span>
     </div>
     <div v-else>
-      <h3 class="label">Select an Entry</h3>
-      <md-table :value="entries" class="entry-selector-table">
-        <md-table-toolbar>
-          <h1 class="md-title">Your Entries</h1>
-        </md-table-toolbar>
-        <md-table-row slot="md-table-row" slot-scope="{ item }" class="entry-selector-row" @click.native="$emit('input', item)">
-          <md-table-cell md-label="Entry" md-sort-by="name"><span class="link">{{ item.name }}</span></md-table-cell>
-          <md-table-cell md-label="Tournament" md-sort-by="tournament.name">{{ item.tournament && item.tournament.name }}</md-table-cell>
-        </md-table-row>
-      </md-table>
+      <div class="header-ribbon">
+        <div class="md-title">Select an Entry</div>
+      </div>
+      <div class="table-wrapper">
+        <table class="entry-selector-table">
+          <thead>
+            <tr>
+              <th>Entry</th>
+              <th>Tournament</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in entries" :key="item.id" class="entry-selector-row" @click="$emit('input', item)">
+              <td><span class="link">{{ item.name }}</span></td>
+              <td>{{ item.tournament && item.tournament.name }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -40,15 +49,55 @@ export default {
 </script>
 
 <style scoped>
+.header-ribbon {
+  background: #474C45;
+  border-radius: 4px 4px 0 0;
+  padding: 16px 24px;
+}
+
+.header-ribbon .md-title {
+  color: #fff;
+  text-align: center;
+  font-weight: bold;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
 .entry-selector-table {
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
+  font-size: 14px;
+}
+
+.entry-selector-table th,
+.entry-selector-table td {
+  padding: 12px 16px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 0, 0, .12);
+}
+
+.entry-selector-table thead th {
+  background: #dbe4d6;
+  font-size: 12px;
+  font-weight: 600;
+  color: #474C45;
+}
+
+.entry-selector-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .entry-selector-row {
   cursor: pointer;
 }
 
-.entry-selector-row:hover {
+.entry-selector-row:hover td {
   background-color: #f5f5f5;
 }
 
