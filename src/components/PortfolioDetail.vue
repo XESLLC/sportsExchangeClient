@@ -47,14 +47,21 @@
             <td>{{ item.totalProfitLoss | toCurrency }}</td>
           </tr>
         </tbody>
+        <tfoot>
+          <tr class="totals-row">
+            <td class="col-team">Total</td>
+            <td v-if="hasSeed"></td>
+            <td v-if="hasRegion"></td>
+            <td>{{ totals.quantity }}</td>
+            <td></td>
+            <td>{{ totals.total | toCurrency }}</td>
+            <td></td>
+            <td>{{ totals.totalDividends | toCurrency }}</td>
+            <td></td>
+            <td>{{ totals.totalProfitLoss | toCurrency }}</td>
+          </tr>
+        </tfoot>
       </table>
-    </div>
-    <div class="md-layout">
-      <div class="md-layout-item"></div>
-      <div class="md-layout-item"></div>
-      <div class="md-layout-item total">
-        Total: {{calculateTotal() | toCurrency}}
-      </div>
     </div>
 
     <md-dialog v-if="showSellStocksFormModal" :md-active.sync="showSellStocksFormModal" :md-fullscreen="false">
@@ -102,6 +109,15 @@ export default {
         }
         return dir * ((aVal || 0) - (bVal || 0));
       });
+    },
+    totals() {
+      return this.tournamentTeamStocks.reduce((result, teamStock) => {
+        result.quantity += teamStock.quantity;
+        result.total += teamStock.total;
+        result.totalDividends += teamStock.totalDividends;
+        result.totalProfitLoss += teamStock.totalProfitLoss;
+        return result;
+      }, { quantity: 0, total: 0, totalDividends: 0, totalProfitLoss: 0 });
     }
   },
   props: {
@@ -181,12 +197,6 @@ export default {
         }
       });
     },
-    calculateTotal() {
-      return this.tournamentTeamStocks.reduce((result, teamStock) => {
-        result += teamStock.total;
-        return result;
-      }, 0)
-    },
     async getStocks() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
@@ -225,10 +235,6 @@ export default {
 </script>
 
 <style scoped>
-.total {
-  font-weight: bold;
-}
-
 .add-to-stock-link {
   line-height: 4;
 }
@@ -306,6 +312,21 @@ export default {
   background: #f0f0f0;
 }
 
+/* Sticky footer totals row */
+.detail-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #f5f5f5;
+  font-weight: bold;
+  border-top: 2px solid rgba(0, 0, 0, .12);
+  border-bottom: none;
+}
+
+.detail-table tfoot .col-team {
+  z-index: 4;
+}
+
 @media screen and (max-width: 600px) {
   .detail-table .col-team {
     position: static;
@@ -315,6 +336,12 @@ export default {
   .detail-table thead .col-team {
     position: sticky;
     top: 0;
+    z-index: 2;
+  }
+
+  .detail-table tfoot .col-team {
+    position: sticky;
+    bottom: 0;
     z-index: 2;
   }
 }
