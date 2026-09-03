@@ -7,6 +7,7 @@
       <md-card>
         <md-card-header class="header-ribbon">
           <breadcrumbs :crumbs="breadcrumbCrumbs"></breadcrumbs>
+          <span v-if="selectedEntry" class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ selectedEntry.tournament && selectedEntry.tournament.name }} Exchange Home</span>
           <div class="md-title">Portfolio</div>
         </md-card-header>
 
@@ -29,9 +30,6 @@
             <div class="md-layout-item"></div>
           </div>
           <div v-if="selectedEntry">
-            <div class="exchange-home-link-row">
-              <span class="link decorated-link exchange-home-link" @click="goToTournamentHome()">{{ selectedEntry.tournament && selectedEntry.tournament.name }} Exchange Home</span>
-            </div>
             <div v-if="successMessage" class="alert-padding alert-success">
               {{successMessage}}
               <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
@@ -355,6 +353,16 @@ export default {
 
 .header-ribbon ::v-deep .breadcrumb-separator {
   color: rgba(255, 255, 255, .5);
+}
+
+.header-ribbon .exchange-home-link {
+  display: block;
+  margin: 6px 0 2px;
+  color: #8fe37e;
+}
+
+.header-ribbon .exchange-home-link:hover {
+  color: #b9f0ae;
 }
 
 .tabs-ribbon {
