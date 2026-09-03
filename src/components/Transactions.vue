@@ -28,13 +28,7 @@
         </div>
 
         <md-card-content>
-          <div class="md-layout">
-            <div class="md-layout-item"></div>
-            <div class="md-layout-item md-large-size-50 md-medium-size-75 md-small-size-100">
-              <entry-selector :entries="entries" v-model="selectedEntry"></entry-selector>
-            </div>
-            <div class="md-layout-item"></div>
-          </div>
+          <entry-selector :entries="entries" v-model="selectedEntry"></entry-selector>
           <div v-if="selectedEntry">
             <div class="budget-container">
               <div>IPO Budget: {{ipoBudget | toCurrency}}</div>
