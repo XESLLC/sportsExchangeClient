@@ -88,6 +88,24 @@
             :recipient-count="entries ? entries.length : 0"
           ></email-blast-form>
         </div>
+        <div class="auto-refresh-section">
+          <md-switch v-model="autoRefreshInput" @change="toggleAutoRefresh()" :disabled="tournament.status === 'closed'" class="md-primary">
+            <div>Auto-refresh Reg Season Wins from ESPN: {{ autoRefreshInput }}</div>
+          </md-switch>
+          <div class="auto-refresh-hint">
+            When on, a scheduled job pulls live NFL standings every 15 min (Thu afternoon&ndash;Tue morning) and re-saves milestone 1. Division / seed / playoff milestones stay manual.
+          </div>
+          <md-button
+            :disabled="tournament.status === 'closed' || autoRefreshWait"
+            @click="runAutoRefreshNow()"
+            class="md-raised"
+            :class="{ 'btn-disabled': tournament.status === 'closed' || autoRefreshWait }"
+          >
+            Refresh Reg Season now
+            <md-progress-spinner v-if="autoRefreshWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
+          </md-button>
+          <span v-if="autoRefreshResult" class="auto-refresh-result">{{ autoRefreshResult }}</span>
+        </div>
         <div>
           <md-table class="text-left" md-card v-model="tournament.settings.milestones">
             <md-table-toolbar>
@@ -227,6 +245,9 @@ export default {
       milestonePercentInputs: {},
       milestoneSlotInputs: {},
       savingMilestonePercent: {},
+      autoRefreshInput: false,
+      autoRefreshWait: false,
+      autoRefreshResult: null,
       attrs: {
         currentSelectedView: this.selectedView,
         currentSelectedEntry: this.selectedEntry
@@ -423,6 +444,59 @@ export default {
     editMilestone(milestone) {
       this.selectedMilestone = milestone;
       this.showEditMilestoneModal = true;
+    },
+    async toggleAutoRefresh() {
+      try {
+        await apolloClient.mutate({
+          fetchPolicy: 'no-cache',
+          mutation: gql`
+            mutation SetTournamentAutoRefresh($tournamentId: ID!, $enabled: Boolean!) {
+              setTournamentAutoRefresh(tournamentId: $tournamentId, enabled: $enabled) { id }
+            }
+          `,
+          variables: { tournamentId: this.tournamentId, enabled: this.autoRefreshInput }
+        });
+        this.successMessage = `Reg season auto-refresh ${this.autoRefreshInput ? 'enabled' : 'disabled'}.`;
+      } catch (err) {
+        this.autoRefreshInput = !this.autoRefreshInput;
+        this.serverError = (err.graphQLErrors && err.graphQLErrors[0] && err.graphQLErrors[0].message) || "Failed to update auto-refresh";
+      }
+    },
+    async runAutoRefreshNow() {
+      this.autoRefreshWait = true;
+      this.autoRefreshResult = null;
+      try {
+        const response = await apolloClient.mutate({
+          fetchPolicy: 'no-cache',
+          mutation: gql`
+            mutation RunRegularSeasonAutoRefresh($tournamentId: ID!) {
+              runRegularSeasonAutoRefresh(tournamentId: $tournamentId) {
+                status
+                message
+                totalLeagueWins
+                unmatchedTeamNames
+              }
+            }
+          `,
+          variables: { tournamentId: this.tournamentId }
+        });
+        const r = response.data.runRegularSeasonAutoRefresh;
+        if (r.status === 'updated') {
+          this.autoRefreshResult = `Updated from ESPN (${r.totalLeagueWins} league wins so far).`;
+          await this.getDividendTotals();
+        } else if (r.status === 'unchanged') {
+          this.autoRefreshResult = 'Already up to date - nothing changed.';
+        } else if (r.status === 'skipped-unmatched') {
+          this.autoRefreshResult = `Skipped - could not match: ${(r.unmatchedTeamNames || []).join(', ')}. Fix team names, then retry.`;
+        } else if (r.status === 'skipped-complete') {
+          this.autoRefreshResult = 'Regular season is complete - not refreshing.';
+        } else {
+          this.autoRefreshResult = `Error: ${r.message || 'unknown'}`;
+        }
+      } catch (err) {
+        this.autoRefreshResult = (err.graphQLErrors && err.graphQLErrors[0] && err.graphQLErrors[0].message) || 'Refresh failed';
+      }
+      this.autoRefreshWait = false;
     },
     perSlotPayout(milestone) {
       const rawPercent = parseFloat(this.milestonePercentInputs[milestone.id]);
@@ -721,6 +795,7 @@ export default {
               settings {
                 ipoBudget,
                 secondaryMarketBudget,
+                autoRefreshRegularSeason,
                 milestones {
                   id,
                   name,
@@ -739,6 +814,7 @@ export default {
     this.tournament = tournamentResponse.data.tournament;
     this.isIpoOpenInput = this.tournament.isIpoOpen;
     this.tournamentStatusInput = this.tournament.status;
+    this.autoRefreshInput = !!(this.tournament.settings && this.tournament.settings.autoRefreshRegularSeason);
     (this.tournament.settings.milestones || []).forEach((milestone) => {
       this.milestonePercentInputs[milestone.id] = milestone.poolPercent != null
         ? round1(milestone.poolPercent * 100)
@@ -784,6 +860,23 @@ export default {
 
 .slot-count-input {
   width: 60px;
+}
+
+.auto-refresh-section {
+  margin: 16px 0;
+}
+
+.auto-refresh-hint {
+  color: #666;
+  font-size: 0.85em;
+  margin: 4px 0 8px;
+  max-width: 640px;
+}
+
+.auto-refresh-result {
+  margin-left: 10px;
+  font-size: 0.9em;
+  color: #444;
 }
 
 .pool-percent-saved {
