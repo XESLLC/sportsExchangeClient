@@ -46,6 +46,7 @@ import Exchanges from './components/Exchanges';
 import EditEntryData from './components/EditEntryData';
 import TournamentHome from './components/TournamentHome';
 import TournamentMessageBoard from './components/TournamentMessageBoard';
+import TournamentOwnership from './components/TournamentOwnership';
 import ConfirmEmail from './components/ConfirmEmail';
 
 const router = new Router({
@@ -159,6 +160,13 @@ const router = new Router({
       path: '/tournament-home/:tournamentId/message-board',
       name: 'TournamentMessageBoard',
       component: TournamentMessageBoard,
+      props: true,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/tournament-home/:tournamentId/ownership',
+      name: 'TournamentOwnership',
+      component: TournamentOwnership,
       props: true,
       beforeEnter: authGuard
     }

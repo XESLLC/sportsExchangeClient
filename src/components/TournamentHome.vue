@@ -116,6 +116,10 @@
             </md-table-row>
           </md-table>
         </div>
+
+        <div class="ownership-link-row">
+          <span class="link decorated-link" @click="goToOwnership">Ownership by Portfolio &rarr;</span>
+        </div>
       </md-card-content>
     </md-card>
 
@@ -247,6 +251,9 @@ export default {
     },
     goToPortfolio(entryId) {
       this.$router.push({ name: 'Portfolio', params: { entryId } });
+    },
+    goToOwnership() {
+      this.$router.push({ name: 'TournamentOwnership', params: { tournamentId: this.tournamentId } });
     },
     isMyEntry(entryName) {
       return this.myEntryNames.includes(entryName);
@@ -487,6 +494,10 @@ export default {
 
 .mobile-sub span {
   margin-right: 12px;
+}
+
+.ownership-link-row {
+  margin-top: 16px;
 }
 
 .my-entries-grid {
