@@ -47,16 +47,6 @@
       </md-card-content>
     </md-card>
 
-    <!-- Total Pot -->
-    <md-card class="section-card">
-      <md-card-header>
-        <div class="md-title">Total Pot</div>
-      </md-card-header>
-      <md-card-content>
-        <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
-      </md-card-content>
-    </md-card>
-
     <!-- Message Board -->
     <md-card class="section-card">
       <md-card-header>
@@ -64,6 +54,68 @@
       </md-card-header>
       <md-card-content>
         <message-board :tournament-id="tournamentId" :preview-count="2"></message-board>
+      </md-card-content>
+    </md-card>
+
+    <!-- Total Pot -->
+    <md-card class="section-card">
+      <md-card-header>
+        <div class="md-title">Total Pot</div>
+      </md-card-header>
+      <md-card-content>
+        <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
+
+        <div v-if="teamInvestments.length" class="team-investment">
+          <div class="md-subheading team-investment-heading">Invested by Team</div>
+
+          <md-table class="web-table text-left">
+            <md-table-row>
+              <md-table-head>Team</md-table-head>
+              <md-table-head>Shares</md-table-head>
+              <md-table-head>Invested</md-table-head>
+              <md-table-head>% of Pot</md-table-head>
+            </md-table-row>
+            <md-table-row v-for="row in teamInvestments" :key="row.teamName">
+              <md-table-cell>{{ row.teamName }}</md-table-cell>
+              <md-table-cell>{{ row.shares }}</md-table-cell>
+              <md-table-cell>{{ row.invested | toCurrency }}</md-table-cell>
+              <md-table-cell>{{ row.percentOfPot }}%</md-table-cell>
+            </md-table-row>
+            <md-table-row class="totals-row">
+              <md-table-cell>Total</md-table-cell>
+              <md-table-cell>{{ totalShares }}</md-table-cell>
+              <md-table-cell>{{ totalInvested | toCurrency }}</md-table-cell>
+              <md-table-cell>100%</md-table-cell>
+            </md-table-row>
+          </md-table>
+
+          <md-table class="mobile-table text-left">
+            <md-table-row v-for="row in teamInvestments" :key="row.teamName + '-mobile'">
+              <md-table-cell>
+                <div class="mobile-row">
+                  <span class="mobile-team-name">{{ row.teamName }}</span>
+                  <span class="mobile-invested">{{ row.invested | toCurrency }}</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ row.shares }} shares</span>
+                  <span>{{ row.percentOfPot }}% of pot</span>
+                </div>
+              </md-table-cell>
+            </md-table-row>
+            <md-table-row class="totals-row">
+              <md-table-cell>
+                <div class="mobile-row">
+                  <span class="mobile-team-name">Total</span>
+                  <span class="mobile-invested">{{ totalInvested | toCurrency }}</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ totalShares }} shares</span>
+                  <span>100% of pot</span>
+                </div>
+              </md-table-cell>
+            </md-table-row>
+          </md-table>
+        </div>
       </md-card-content>
     </md-card>
 
@@ -150,6 +202,9 @@ export default {
       isPageReady: false,
       tournamentName: '',
       totalPot: 0,
+      teamInvestments: [],
+      totalShares: 0,
+      totalInvested: 0,
       rankedSummaries: [],
       myEntries: [],
       totalEntries: 0,
@@ -213,6 +268,22 @@ export default {
       this.tournamentName = response.data.tournament.name;
       this.totalPot = response.data.tournament.totalPot;
     },
+    async fetchTeamInvestments() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query TournamentTeams($tournamentId: ID!) {
+            tournamentTeams(tournamentId: $tournamentId) {
+              teamName
+              ipoPrice
+              stocksPurchased
+            }
+          }
+        `,
+        variables: { tournamentId: this.tournamentId }
+      });
+      return response.data.tournamentTeams;
+    },
     async fetchUserEntries() {
       const email = sessionStorage.getItem('sports-exchange.email');
       const response = await apolloClient.query({
@@ -252,8 +323,32 @@ export default {
       this.rankedSummaries = [];
       this.myEntries = [];
       this.myEntryNames = [];
+      this.teamInvestments = [];
+      this.totalShares = 0;
+      this.totalInvested = 0;
 
       await this.fetchTournament();
+
+      try {
+        const teams = await this.fetchTeamInvestments();
+        const rows = teams.map(t => ({
+          teamName: t.teamName,
+          shares: t.stocksPurchased || 0,
+          invested: (t.stocksPurchased || 0) * t.ipoPrice
+        }));
+        const totalInvested = rows.reduce((sum, r) => sum + r.invested, 0);
+        rows.sort((a, b) => b.invested - a.invested);
+        rows.forEach(r => {
+          r.percentOfPot = totalInvested > 0
+            ? Math.round((r.invested / totalInvested) * 1000) / 10
+            : 0;
+        });
+        this.teamInvestments = rows;
+        this.totalShares = rows.reduce((sum, r) => sum + r.shares, 0);
+        this.totalInvested = totalInvested;
+      } catch (err) {
+        this.teamInvestments = [];
+      }
 
       const userEntriesForTournament = await this.fetchUserEntries();
       this.myEntryNames = userEntriesForTournament.map(e => e.name);
@@ -355,6 +450,43 @@ export default {
   font-weight: bold;
   color: #24E22C;
   padding: 8px 0;
+}
+
+.team-investment {
+  margin-top: 16px;
+}
+
+.team-investment .mobile-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.team-investment-heading {
+  margin: 0 0 8px;
+  font-weight: bold;
+}
+
+.totals-row td {
+  font-weight: bold;
+  border-top: 2px solid #487233;
+}
+
+.mobile-team-name {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.mobile-invested {
+  font-weight: bold;
+}
+
+.mobile-sub {
+  color: #555;
+  font-size: 0.9em;
+}
+
+.mobile-sub span {
+  margin-right: 12px;
 }
 
 .my-entries-grid {
