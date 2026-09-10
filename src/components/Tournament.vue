@@ -95,7 +95,7 @@
             </md-table-toolbar>
             <md-table-row slot="md-table-row" slot-scope="{ item }">
               <md-table-cell md-label="Name" md-sort-by="name">{{ item.name }}</md-table-cell>
-              <md-table-cell md-label="% of Pot">
+              <md-table-cell md-label="% of Pot (total)">
                 <input
                   :value="milestonePercentInputs[item.id]"
                   @input="milestonePercentInputs[item.id] = $event.target.value"
@@ -106,11 +106,23 @@
                   min="0"
                   max="100"
                 >%
-                <span v-if="tournament.status !== 'closed'" @click="saveMilestonePoolPercent(item)" title="Save % of pot">
+              </md-table-cell>
+              <md-table-cell md-label="Slots">
+                <input
+                  :value="milestoneSlotInputs[item.id]"
+                  @input="milestoneSlotInputs[item.id] = $event.target.value"
+                  :disabled="tournament.status === 'closed'"
+                  class="slot-count-input"
+                  type="number"
+                  step="1"
+                  min="1"
+                >
+                <span v-if="tournament.status !== 'closed'" @click="saveMilestoneConfig(item)" title="Save milestone config">
                   <md-icon class="fas fa-save link"></md-icon>
                 </span>
                 <span v-if="savingMilestonePercent[item.id]" class="pool-percent-saved">Saved</span>
               </md-table-cell>
+              <md-table-cell md-label="$ / Slot">{{ perSlotPayout(item) | toCurrency }}</md-table-cell>
               <md-table-cell md-label="Edit/Enter Data">
                 <span @click="editMilestone(item)"><md-icon class="fas fa-edit link"></md-icon></span>
               </md-table-cell>
@@ -141,7 +153,7 @@
     <md-dialog :md-active.sync="showEditMilestoneModal" :md-fullscreen="false">
       <md-dialog-title v-if="selectedMilestone">Milestone - {{selectedMilestone.name}}</md-dialog-title>
       <md-dialog-content>
-        <milestone-form :form-type="'edit'" :success-cb="editMilestoneCb" :milestone="selectedMilestone" :tournament-id="tournamentId" :league-id="leagueId" :tournament-closed="tournament.status === 'closed'"></milestone-form>
+        <milestone-form :form-type="'edit'" :success-cb="editMilestoneCb" :milestone="selectedMilestone" :tournament-id="tournamentId" :league-id="leagueId" :total-pot="tournament.totalPot" :tournament-closed="tournament.status === 'closed'"></milestone-form>
       </md-dialog-content>
     </md-dialog>
 
@@ -191,6 +203,13 @@ function round1(value) {
   return Math.round(value * 10) / 10;
 }
 
+// Full-season qualifying slots per milestone - mirrors the server defaults
+// in TournamentService. Used only to prefill the admin input before the
+// tournament has an explicit slotCount saved.
+const DEFAULT_MILESTONE_SLOT_COUNTS = {
+  '1': 272, '2': 8, '3': 2, '4': 8, '5': 4, '6': 2, '7': 1
+};
+
 export default {
   components: { TournamentTeamForm, TournamentTeamSetupForm, MilestoneForm, EliminateTeamsForm, MasterSheet, EmailBlastForm },
   name: "Tournament",
@@ -206,6 +225,7 @@ export default {
       serverError: null,
       userTournamentEntry: null,
       milestonePercentInputs: {},
+      milestoneSlotInputs: {},
       savingMilestonePercent: {},
       attrs: {
         currentSelectedView: this.selectedView,
@@ -404,20 +424,34 @@ export default {
       this.selectedMilestone = milestone;
       this.showEditMilestoneModal = true;
     },
-    async saveMilestonePoolPercent(milestone) {
-      const rawValue = parseFloat(this.milestonePercentInputs[milestone.id]);
-      if (isNaN(rawValue) || rawValue < 0 || rawValue > 100) {
+    perSlotPayout(milestone) {
+      const rawPercent = parseFloat(this.milestonePercentInputs[milestone.id]);
+      const slots = parseInt(this.milestoneSlotInputs[milestone.id], 10);
+      const pot = this.tournament && this.tournament.totalPot ? this.tournament.totalPot : 0;
+      if (isNaN(rawPercent) || isNaN(slots) || slots <= 0) {
+        return 0;
+      }
+      return (rawPercent / 100) * pot / slots;
+    },
+    async saveMilestoneConfig(milestone) {
+      const rawPercent = parseFloat(this.milestonePercentInputs[milestone.id]);
+      if (isNaN(rawPercent) || rawPercent < 0 || rawPercent > 100) {
         this.serverError = "% of pot must be a number between 0 and 100";
         return;
       }
-      const poolPercent = rawValue / 100;
+      const slotCount = parseInt(this.milestoneSlotInputs[milestone.id], 10);
+      if (isNaN(slotCount) || slotCount < 1) {
+        this.serverError = "Slots must be a whole number of at least 1";
+        return;
+      }
+      const poolPercent = rawPercent / 100;
 
       try {
         await apolloClient.mutate({
           fetchPolicy: 'no-cache',
           mutation: gql`
-            mutation updateMilestonePoolPercent($tournamentId: ID!, $milestoneId: String!, $poolPercent: Float!) {
-              updateMilestonePoolPercent(tournamentId: $tournamentId, milestoneId: $milestoneId, poolPercent: $poolPercent) {
+            mutation updateMilestoneConfig($tournamentId: ID!, $milestoneId: String!, $poolPercent: Float, $slotCount: Int) {
+              updateMilestoneConfig(tournamentId: $tournamentId, milestoneId: $milestoneId, poolPercent: $poolPercent, slotCount: $slotCount) {
                 id
               }
             }
@@ -425,11 +459,13 @@ export default {
           variables: {
             tournamentId: this.tournamentId,
             milestoneId: String(milestone.id),
-            poolPercent
+            poolPercent,
+            slotCount
           }
         });
 
         milestone.poolPercent = poolPercent;
+        milestone.slotCount = slotCount;
         this.savingMilestonePercent = { ...this.savingMilestonePercent, [milestone.id]: true };
         setTimeout(() => {
           this.savingMilestonePercent = { ...this.savingMilestonePercent, [milestone.id]: false };
@@ -438,7 +474,7 @@ export default {
         if(err.graphQLErrors && err.graphQLErrors.length > 0) {
           this.serverError = err.graphQLErrors[0].message;
         } else {
-          this.serverError = "Failed to save % of pot";
+          this.serverError = "Failed to save milestone config";
         }
       }
     },
@@ -676,6 +712,7 @@ export default {
               name,
               isIpoOpen,
               status,
+              totalPot,
               masterSheetUpload,
               pricingSheetUpload,
               rulesSheetUpload,
@@ -687,7 +724,8 @@ export default {
                 milestones {
                   id,
                   name,
-                  poolPercent
+                  poolPercent,
+                  slotCount
                 }
               }
             }
@@ -705,6 +743,9 @@ export default {
       this.milestonePercentInputs[milestone.id] = milestone.poolPercent != null
         ? round1(milestone.poolPercent * 100)
         : 0;
+      this.milestoneSlotInputs[milestone.id] = milestone.slotCount != null
+        ? milestone.slotCount
+        : (DEFAULT_MILESTONE_SLOT_COUNTS[milestone.id] || 1);
     });
 
     // Phase 2: everything that depends on this.entries, all in parallel
@@ -738,6 +779,10 @@ export default {
 }
 
 .pool-percent-input {
+  width: 60px;
+}
+
+.slot-count-input {
   width: 60px;
 }
 

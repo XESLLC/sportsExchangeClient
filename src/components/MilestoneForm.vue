@@ -1,19 +1,34 @@
 <template>
   <div v-if="isPageReady">
+    <div class="milestone-summary">
+      <span v-if="milestone.id === '1'">
+        {{ perSlotPayout | toCurrency }} per win &middot; {{ slotCount }} win slots &middot; {{ poolPercentLabel }} of pot
+      </span>
+      <span v-else>
+        {{ perSlotPayout | toCurrency }} per qualifying team &middot; {{ slotCount }} slots &middot; {{ poolPercentLabel }} of pot
+      </span>
+    </div>
+    <div v-if="warnNotFinal" class="milestone-warn">
+      Only {{ enteredCount }} of {{ slotCount }} {{ milestone.id === '1' ? 'wins' : 'teams' }} entered.
+      Saving now writes this milestone's dividends into the live rankings and distributes its full pool across a partial season - save only when the results are final.
+    </div>
+
     <md-table v-model="tournamentTeamData" class="text-left">
       <md-table-row slot="md-table-row" slot-scope="{ item }">
         <md-table-cell md-label="Team" md-sort-by="name">{{ item.teamName }}</md-table-cell>
-        <md-table-cell md-label="Dividend Price" md-sort-by="dividendPrice">
-          $<input :ref="'dividendPriceInput-' + item.id" @change="updateInput(item.id)" class="dividend-price-input" type="number" step="1" min="0" max="" :value="item.milestoneInput.dividendPrice">
-        </md-table-cell>
-        <md-table-cell md-label="Wins" md-sort-by="wins">
-          <input :ref="'winsInput-' + item.id" @change="updateInput(item.id)" class="wins-input" type="number" step="1" min="0" max="" :value="item.milestoneInput.wins">
-        </md-table-cell>
-        <md-table-cell md-label="Losses" md-sort-by="losses">
-          <input :ref="'lossesInput-' + item.id" @change="updateInput(item.id)" class="losses-input" type="number" step="1" min="0" max="" :value="item.milestoneInput.losses">
-        </md-table-cell>
-        <md-table-cell md-label="Ties" md-sort-by="ties">
-          <input :ref="'tiesInput-' + item.id" @change="updateInput(item.id)" class="ties-input" type="number" step="1" min="0" max="" :value="item.milestoneInput.ties">
+        <template v-if="milestone.id === '1'">
+          <md-table-cell md-label="Wins" md-sort-by="wins">
+            <input :ref="'winsInput-' + item.id" @change="updateInput(item.id)" class="wins-input" type="number" step="1" min="0" :value="item.milestoneInput.wins">
+          </md-table-cell>
+          <md-table-cell md-label="Losses" md-sort-by="losses">
+            <input :ref="'lossesInput-' + item.id" @change="updateInput(item.id)" class="losses-input" type="number" step="1" min="0" :value="item.milestoneInput.losses">
+          </md-table-cell>
+          <md-table-cell md-label="Ties" md-sort-by="ties">
+            <input :ref="'tiesInput-' + item.id" @change="updateInput(item.id)" class="ties-input" type="number" step="1" min="0" :value="item.milestoneInput.ties">
+          </md-table-cell>
+        </template>
+        <md-table-cell v-else md-label="Achieved">
+          <input type="checkbox" :ref="'achievedInput-' + item.id" @change="toggleAchieved(item.id)" :checked="item.milestoneInput.achieved">
         </md-table-cell>
       </md-table-row>
     </md-table>
@@ -44,6 +59,13 @@
 <script>
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
+
+// Full-season qualifying slots per milestone - mirrors the server defaults
+// in TournamentService. Only used to fall back before an explicit
+// slotCount is saved for the tournament.
+const DEFAULT_MILESTONE_SLOT_COUNTS = {
+  '1': 272, '2': 8, '3': 2, '4': 8, '5': 4, '6': 2, '7': 1
+};
 
 export default {
   name: "MilestoneForm",
@@ -76,9 +98,40 @@ export default {
     milestone: {
       type: Object
     },
+    totalPot: {
+      type: Number,
+      default: 0
+    },
     tournamentClosed: {
       type: Boolean,
       default: false
+    }
+  },
+  computed: {
+    slotCount() {
+      if (this.milestone && typeof this.milestone.slotCount === 'number' && this.milestone.slotCount > 0) {
+        return this.milestone.slotCount;
+      }
+      return DEFAULT_MILESTONE_SLOT_COUNTS[this.milestone && this.milestone.id] || 1;
+    },
+    perSlotPayout() {
+      const pct = this.milestone && typeof this.milestone.poolPercent === 'number' ? this.milestone.poolPercent : 0;
+      if (this.slotCount <= 0) return 0;
+      return pct * (this.totalPot || 0) / this.slotCount;
+    },
+    poolPercentLabel() {
+      const pct = this.milestone && typeof this.milestone.poolPercent === 'number' ? this.milestone.poolPercent : 0;
+      return `${Math.round(pct * 1000) / 10}%`;
+    },
+    enteredCount() {
+      if (!this.tournamentTeamData) return 0;
+      if (this.milestone.id === '1') {
+        return this.tournamentTeamData.reduce((sum, t) => sum + (parseInt(t.milestoneInput.wins, 10) || 0), 0);
+      }
+      return this.tournamentTeamData.filter(t => t.milestoneInput && t.milestoneInput.achieved).length;
+    },
+    warnNotFinal() {
+      return this.enteredCount < this.slotCount;
     }
   },
   methods: {
@@ -98,7 +151,8 @@ export default {
                 dividendPrice,
                 wins,
                 losses,
-                ties
+                ties,
+                achieved
               }
             }
           }
@@ -108,78 +162,30 @@ export default {
         }
       });
 
-      const tournamentTeamData = response.data.tournamentTeams;
+      const index = parseInt(this.milestone.id, 10) - 1;
+      const isRegSeason = this.milestone.id === '1';
+      const teams = isRegSeason
+        ? response.data.tournamentTeams
+        : response.data.tournamentTeams.filter(t => !t.isEliminated);
 
-      if(this.milestone.id === '1') {
-        if(!tournamentTeamData[0].milestoneData || !tournamentTeamData[0].milestoneData[0]) {
-          this.tournamentTeamData = tournamentTeamData.map((tournamentTeam) => {
-            return {
-              id: tournamentTeam.id,
-              teamId: tournamentTeam.teamId,
-              teamName: tournamentTeam.teamName,
-              milestoneInput: {
-                milestoneId: this.milestone.id,
-                milestoneName: this.milestone.name,
-                dividendPrice: 0,
-                wins: 0,
-                losses: 0,
-                ties: 0
-              }
-            }
-          });
-        } else {
-          const index = parseInt(this.milestone.id) - 1;
-          this.tournamentTeamData = tournamentTeamData.map((tournamentTeam) => {
-            const milestoneInput = {
-              milestoneId: tournamentTeam.milestoneData[index].milestoneId,
-              milestoneName: tournamentTeam.milestoneData[index].milestoneName,
-              dividendPrice: tournamentTeam.milestoneData[index].dividendPrice,
-              wins: tournamentTeam.milestoneData[index].wins,
-              losses: tournamentTeam.milestoneData[index].losses,
-              ties: tournamentTeam.milestoneData[index].ties
-            }
-            return {
-              ...tournamentTeam,
-              milestoneInput
-            }
-          });
-        }
-      } else {
-        const nonEliminatedTeams = tournamentTeamData.filter(teamData => !teamData.isEliminated)
-        const index = parseInt(this.milestone.id) - 1;
-        if(!nonEliminatedTeams[0].milestoneData || nonEliminatedTeams[0].milestoneData.length <= index) {
-          this.tournamentTeamData = nonEliminatedTeams.map((tournamentTeam) => {
-            return {
-              id: tournamentTeam.id,
-              teamId: tournamentTeam.teamId,
-              teamName: tournamentTeam.teamName,
-              milestoneInput: {
-                milestoneId: this.milestone.id,
-                milestoneName: this.milestone.name,
-                dividendPrice: 0,
-                wins: 0,
-                losses: 0,
-                ties: 0
-              }
-            }
-          });
-        } else {
-          this.tournamentTeamData = nonEliminatedTeams.map((tournamentTeam) => {
-            const milestoneInput = {
-              milestoneId: tournamentTeam.milestoneData[index].milestoneId,
-              milestoneName: tournamentTeam.milestoneData[index].milestoneName,
-              dividendPrice: tournamentTeam.milestoneData[index].dividendPrice,
-              wins: tournamentTeam.milestoneData[index].wins,
-              losses: tournamentTeam.milestoneData[index].losses,
-              ties: tournamentTeam.milestoneData[index].ties
-            }
-            return {
-              ...tournamentTeam,
-              milestoneInput
-            }
-          });
-        }
-      }
+      this.tournamentTeamData = teams.map((tournamentTeam) => {
+        const saved = tournamentTeam.milestoneData && tournamentTeam.milestoneData[index]
+          ? tournamentTeam.milestoneData[index]
+          : null;
+        return {
+          id: tournamentTeam.id,
+          teamId: tournamentTeam.teamId,
+          teamName: tournamentTeam.teamName,
+          milestoneInput: {
+            milestoneId: this.milestone.id,
+            milestoneName: this.milestone.name,
+            wins: saved ? (saved.wins || 0) : 0,
+            losses: saved ? (saved.losses || 0) : 0,
+            ties: saved ? (saved.ties || 0) : 0,
+            achieved: saved ? !!saved.achieved : false
+          }
+        };
+      });
     },
     async autoFillFromStandings() {
       this.standingsWait = true;
@@ -208,6 +214,8 @@ export default {
             previewRegularSeasonDividends(tournamentId: $tournamentId) {
               totalPoolInvested
               totalLeagueWins
+              slotCount
+              tieGames
               perWinRate
               unmatchedTeamNames
               teams {
@@ -216,7 +224,6 @@ export default {
                 wins
                 losses
                 ties
-                dividendPrice
               }
             }
           }
@@ -243,15 +250,17 @@ export default {
             ...team.milestoneInput,
             wins: teamPreview.wins,
             losses: teamPreview.losses,
-            ties: teamPreview.ties,
-            dividendPrice: teamPreview.dividendPrice
+            ties: teamPreview.ties
           }
         };
       });
 
       let info = `Pulled live NFL standings. Pool: $${preview.totalPoolInvested.toFixed(2)}, ` +
-        `${preview.totalLeagueWins} total league wins, $${preview.perWinRate.toFixed(2)}/win. ` +
-        `Review below, then click Save.`;
+        `${preview.totalLeagueWins} wins played so far of ${preview.slotCount} season slots, ` +
+        `$${preview.perWinRate.toFixed(2)}/win. Review below, then click Save.`;
+      if (preview.tieGames > 0) {
+        info += ` Standings show ${preview.tieGames} tied game(s) - consider setting Slots to ${preview.slotCount - preview.tieGames}.`;
+      }
       if (preview.unmatchedTeamNames.length > 0) {
         info += ` Could not match: ${preview.unmatchedTeamNames.join(', ')} - left unchanged, please fill in manually.`;
       }
@@ -269,13 +278,13 @@ export default {
             ${queryName}(tournamentId: $tournamentId) {
               totalPoolInvested
               poolPercent
+              slotCount
               flatBonus
               unmatchedTeamNames
               teams {
                 tournamentTeamId
                 matched
                 achieved
-                dividendPrice
               }
             }
           }
@@ -290,8 +299,8 @@ export default {
         preview.teams.map(team => [team.tournamentTeamId, team])
       );
 
-      // Only dividendPrice is meaningful here (wins/losses/ties aren't part
-      // of this milestone) - review below, then Save same as always.
+      // Tick the "achieved" box for each team the standings say currently
+      // qualifies - review below, then Save writes the derived dividends.
       this.tournamentTeamData = this.tournamentTeamData.map((team) => {
         const teamPreview = previewByTournamentTeamId.get(team.id);
         if (!teamPreview) { return team; }
@@ -300,7 +309,7 @@ export default {
           ...team,
           milestoneInput: {
             ...team.milestoneInput,
-            dividendPrice: teamPreview.dividendPrice
+            achieved: !!teamPreview.achieved
           }
         };
       });
@@ -313,7 +322,8 @@ export default {
         .map(team => team.teamName);
 
       let info = `Pulled live NFL standings. Pool: $${preview.totalPoolInvested.toFixed(2)}, ` +
-        `${(preview.poolPercent * 100).toFixed(1)}% of pot = $${preview.flatBonus.toFixed(2)} per team that hit this milestone. ` +
+        `${(preview.poolPercent * 100).toFixed(1)}% of pot across ${preview.slotCount} slots = ` +
+        `$${preview.flatBonus.toFixed(2)} per qualifying team. ` +
         (achievedTeamNames.length > 0
           ? `Currently: ${achievedTeamNames.join(', ')}. `
           : `No team currently qualifies (may be too early in the season). `) +
@@ -325,39 +335,34 @@ export default {
     },
     async saveMilestoneData() {
       this.httpWait = true;
-      const savePromises = this.tournamentTeamData.map((team) => {
-        const parsedMilestoneInput = {
-          milestoneId: team.milestoneInput.milestoneId,
-          milestoneName: team.milestoneInput.milestoneName,
-          dividendPrice: parseFloat(team.milestoneInput.dividendPrice),
-          wins: parseInt(team.milestoneInput.wins),
-          losses: parseInt(team.milestoneInput.losses),
-          ties: parseInt(team.milestoneInput.ties)
-        }
-        const input = {
-          id: team.id,
-          milestoneInput: parsedMilestoneInput
-        }
-        return apolloClient.mutate({
+
+      const teams = this.tournamentTeamData.map((team) => ({
+        tournamentTeamId: team.id,
+        wins: parseInt(team.milestoneInput.wins, 10) || 0,
+        losses: parseInt(team.milestoneInput.losses, 10) || 0,
+        ties: parseInt(team.milestoneInput.ties, 10) || 0,
+        achieved: !!team.milestoneInput.achieved
+      }));
+
+      try {
+        await apolloClient.mutate({
           fetchPolicy: 'no-cache',
           mutation: gql`
-            mutation createOrUpdateMilestoneData($input: TournamentTeamMilestoneInput!) {
-              createOrUpdateMilestoneData(input: $input) {
-                id,
-                name
+            mutation saveMilestoneResults($input: MilestoneResultsInput!) {
+              saveMilestoneResults(input: $input) {
+                id
               }
             }
           `,
           variables: {
-            input
+            input: {
+              tournamentId: this.tournamentId,
+              milestoneId: String(this.milestone.id),
+              milestoneName: this.milestone.name,
+              teams
+            }
           }
         });
-      });
-
-      try {
-        // Fired concurrently instead of one-at-a-time - same 32 mutations,
-        // but they no longer wait on each other's network round-trip.
-        await Promise.all(savePromises);
       } catch(err) {
         if(err.graphQLErrors && err.graphQLErrors.length > 0) {
           this.serverError = err.graphQLErrors[0].message;
@@ -371,15 +376,20 @@ export default {
       this.successCb();
     },
     updateInput(id) {
-      const dividendInputValue = this.$refs['dividendPriceInput-' + id].value;
-      const winsInputValue = this.$refs['winsInput-' + id].value;
-      const lossesInputValue = this.$refs['lossesInput-' + id].value;
-      const tiesInputValue = this.$refs['tiesInput-' + id].value;
       const index = this.tournamentTeamData.findIndex(team => team.id === id);
-      this.tournamentTeamData[index].milestoneInput.dividendPrice = dividendInputValue;
-      this.tournamentTeamData[index].milestoneInput.wins = winsInputValue;
-      this.tournamentTeamData[index].milestoneInput.losses = lossesInputValue;
-      this.tournamentTeamData[index].milestoneInput.ties = tiesInputValue;
+      if (index === -1) return;
+      const winsRef = this.$refs['winsInput-' + id];
+      const lossesRef = this.$refs['lossesInput-' + id];
+      const tiesRef = this.$refs['tiesInput-' + id];
+      if (winsRef) this.tournamentTeamData[index].milestoneInput.wins = winsRef.value;
+      if (lossesRef) this.tournamentTeamData[index].milestoneInput.losses = lossesRef.value;
+      if (tiesRef) this.tournamentTeamData[index].milestoneInput.ties = tiesRef.value;
+    },
+    toggleAchieved(id) {
+      const index = this.tournamentTeamData.findIndex(team => team.id === id);
+      if (index === -1) return;
+      const ref = this.$refs['achievedInput-' + id];
+      this.tournamentTeamData[index].milestoneInput.achieved = ref ? ref.checked : false;
     }
   },
   async created() {
@@ -392,12 +402,24 @@ export default {
 </script>
 
 <style scoped>
-  .dividend-price-input {
+  .wins-input,
+  .losses-input,
+  .ties-input {
     width: 60px;
   }
 
-  .wins-input {
-    width: 60px;
+  .milestone-summary {
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+
+  .milestone-warn {
+    margin-bottom: 12px;
+    padding: 8px;
+    background-color: #fff3cd;
+    color: #664d03;
+    border-radius: 4px;
+    font-size: 0.9em;
   }
 
   .standings-info {
