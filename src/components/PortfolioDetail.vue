@@ -94,7 +94,10 @@ export default {
   },
   computed: {
     hasSeed() {
-      return this.tournamentTeamStocks.some(s => s.seed);
+      // Seeds are a bracket concept (March Madness). NFL teams all carry a
+      // default seed of 1, so only show the column when seeds are actually
+      // differentiated.
+      return this.tournamentTeamStocks.some(s => s.seed > 1);
     },
     hasRegion() {
       return this.tournamentTeamStocks.some(s => s.region);

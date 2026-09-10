@@ -19,8 +19,7 @@
       <md-table-row slot="md-table-row" slot-scope="{ item }">
         <md-table-cell md-label="Team" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
         <md-table-cell md-label="Price" md-sort-by="ipoPrice">{{ item.ipoPrice | toCurrency }}</md-table-cell>
-        <!-- Remove the line below for NFL Season -->
-        <md-table-cell v-if="item.seed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell>
+        <md-table-cell v-if="showSeed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell>
         <md-table-cell v-if="item.region" md-label="Region" md-sort-by="region">{{ item.region }}</md-table-cell>
         <md-table-cell md-label="Quantity">
           <input :ref="'quantityInput-' + item.id" @change="calculateTotal(item.id)" @keyup="calculateTotal(item.id)" :value="item.quantity" class="quantity-input" type="number" step="1" min="0" max="">
@@ -130,6 +129,12 @@ export default {
       },
       remainingBalance() {
         return this.currentBalance - this.checkoutTotal;
+      },
+      showSeed() {
+        // Seeds are a bracket concept (March Madness). NFL teams all carry
+        // a default seed of 1, so only show the column when seeds are
+        // actually differentiated.
+        return this.teamPurchaseInput && this.teamPurchaseInput.some(t => t.seed > 1);
       }
     },
   methods: {
