@@ -23,6 +23,10 @@
       </md-card-header>
 
       <md-card-content>
+        <div class="all-ownership-link-row">
+          <span class="link decorated-link all-ownership-link" @click="goToOwnership">All Portfolios Share Ownerships &rarr;</span>
+        </div>
+
         <!-- My Entries -->
         <div v-if="myEntries.length > 0" class="my-entries-section">
           <div class="md-title section-heading">My Entries</div>
@@ -64,6 +68,9 @@
       </md-card-header>
       <md-card-content>
         <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
+        <div class="all-ownership-link-row text-center">
+          <span class="link decorated-link all-ownership-link" @click="goToOwnership">All Portfolios Share Ownerships &rarr;</span>
+        </div>
 
         <div v-if="teamInvestments.length" class="team-investment">
           <div class="md-subheading team-investment-heading">Invested by Team</div>
@@ -115,10 +122,6 @@
               </md-table-cell>
             </md-table-row>
           </md-table>
-        </div>
-
-        <div class="ownership-link-row">
-          <span class="link decorated-link" @click="goToOwnership">Ownership by Portfolio &rarr;</span>
         </div>
       </md-card-content>
     </md-card>
@@ -496,8 +499,12 @@ export default {
   margin-right: 12px;
 }
 
-.ownership-link-row {
-  margin-top: 16px;
+.all-ownership-link-row {
+  margin-bottom: 16px;
+}
+
+.all-ownership-link {
+  font-weight: 600;
 }
 
 .my-entries-grid {

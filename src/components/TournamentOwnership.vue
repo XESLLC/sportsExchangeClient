@@ -12,7 +12,7 @@
         <div class="back-link-row">
           <span class="link decorated-link" @click="goToExchangeHome">&larr; Back to Exchange Home</span>
         </div>
-        <div class="md-title section-heading">Ownership by Portfolio</div>
+        <div class="md-title section-heading">All Portfolios Share Ownerships</div>
         <p class="intro">
           Shares each portfolio currently holds of each team. Use it to find a trade partner, then propose a trade from your Portfolio.
         </p>
@@ -20,6 +20,9 @@
         <div class="controls">
           <span class="link decorated-link" @click="toggleOrientation">
             Show {{ orientation === 'byPortfolio' ? 'teams as rows' : 'portfolios as rows' }}
+          </span>
+          <span v-if="rows.length" class="link decorated-link csv-link" @click="downloadCsv">
+            Download CSV (opens in Excel)
           </span>
         </div>
 
@@ -123,6 +126,32 @@ export default {
   methods: {
     toggleOrientation() {
       this.orientation = this.orientation === 'byPortfolio' ? 'byTeam' : 'byPortfolio';
+    },
+    downloadCsv() {
+      const esc = (v) => {
+        const s = String(v == null ? '' : v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const cornerLabel = this.orientation === 'byPortfolio' ? 'Portfolio' : 'Team';
+      const lines = [];
+      lines.push([cornerLabel, ...this.columns.map(c => c.label), 'Total'].map(esc).join(','));
+      this.rows.forEach((row) => {
+        const label = row.sublabel ? `${row.label} (${row.sublabel})` : row.label;
+        lines.push([label, ...this.columns.map(c => this.cell(row.id, c.id) || 0), row.total].map(esc).join(','));
+      });
+      lines.push(['Total', ...this.columns.map(c => c.total), this.grandTotal].map(esc).join(','));
+
+      const BOM = String.fromCharCode(0xFEFF); // helps Excel read UTF-8
+      const blob = new Blob([BOM + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = (this.tournamentName || 'exchange').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      a.href = url;
+      a.download = `ownership-${safeName}-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
     cell(rowId, colId) {
       const entryId = this.orientation === 'byPortfolio' ? rowId : colId;
@@ -236,6 +265,10 @@ export default {
 
 .controls {
   margin-bottom: 12px;
+}
+
+.csv-link {
+  margin-left: 16px;
 }
 
 .empty {
