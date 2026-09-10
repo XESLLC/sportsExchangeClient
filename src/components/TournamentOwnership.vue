@@ -12,7 +12,7 @@
         <div class="back-link-row">
           <span class="link decorated-link" @click="goToExchangeHome">&larr; Back to Exchange Home</span>
         </div>
-        <div class="md-title section-heading">All Portfolios Share Ownerships</div>
+        <div class="md-title section-heading">All Stock Ownership</div>
         <p class="intro">
           Shares each portfolio currently holds of each team. Use it to find a trade partner, then propose a trade from your Portfolio.
         </p>

@@ -23,10 +23,6 @@
       </md-card-header>
 
       <md-card-content>
-        <div class="all-ownership-link-row">
-          <span class="link decorated-link all-ownership-link" @click="goToOwnership">All Portfolios Share Ownerships &rarr;</span>
-        </div>
-
         <!-- My Entries -->
         <div v-if="myEntries.length > 0" class="my-entries-section">
           <div class="md-title section-heading">My Entries</div>
@@ -48,6 +44,10 @@
           You don't have an entry in this tournament yet.
           <md-button class="md-primary md-raised" @click="$emit('create-entry')">Create Entry</md-button>
         </div>
+
+        <div class="all-ownership-link-row">
+          <span class="link decorated-link all-ownership-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
+        </div>
       </md-card-content>
     </md-card>
 
@@ -68,8 +68,8 @@
       </md-card-header>
       <md-card-content>
         <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
-        <div class="all-ownership-link-row text-center">
-          <span class="link decorated-link all-ownership-link" @click="goToOwnership">All Portfolios Share Ownerships &rarr;</span>
+        <div class="pot-ownership-link-row text-center">
+          <span class="link decorated-link all-ownership-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
         </div>
 
         <div v-if="teamInvestments.length" class="team-investment">
@@ -500,11 +500,16 @@ export default {
 }
 
 .all-ownership-link-row {
-  margin-bottom: 16px;
+  margin-top: 16px;
+}
+
+.pot-ownership-link-row {
+  margin-top: 8px;
 }
 
 .all-ownership-link {
   font-weight: 600;
+  font-size: 1.15em;
 }
 
 .my-entries-grid {
