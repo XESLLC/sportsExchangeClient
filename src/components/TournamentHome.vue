@@ -78,25 +78,25 @@
           <md-table class="web-table text-left">
             <md-table-row>
               <md-table-head>Team</md-table-head>
-              <md-table-head>Total Shares</md-table-head>
-              <md-table-head>% of Total Shares</md-table-head>
               <md-table-head>My Shares</md-table-head>
-              <md-table-head>Invested</md-table-head>
+              <md-table-head>% of Total Shares</md-table-head>
+              <md-table-head>Total Shares</md-table-head>
+              <md-table-head>Total Invested</md-table-head>
               <md-table-head>% of Pot</md-table-head>
             </md-table-row>
             <md-table-row v-for="row in teamInvestments" :key="row.teamName">
               <md-table-cell>{{ row.teamName }}</md-table-cell>
-              <md-table-cell>{{ row.totalShares }}</md-table-cell>
-              <md-table-cell>{{ row.percentOfTotalShares }}%</md-table-cell>
               <md-table-cell>{{ row.myShares }}</md-table-cell>
+              <md-table-cell>{{ row.percentOfTotalShares }}%</md-table-cell>
+              <md-table-cell>{{ row.totalShares }}</md-table-cell>
               <md-table-cell>{{ row.invested | toCurrency }}</md-table-cell>
               <md-table-cell>{{ row.percentOfPot }}%</md-table-cell>
             </md-table-row>
             <md-table-row class="totals-row">
               <md-table-cell>Total</md-table-cell>
-              <md-table-cell>{{ totalShares }}</md-table-cell>
-              <md-table-cell>{{ totalPercentOfTotalShares }}%</md-table-cell>
               <md-table-cell>{{ totalMyShares }}</md-table-cell>
+              <md-table-cell>{{ totalPercentOfTotalShares }}%</md-table-cell>
+              <md-table-cell>{{ totalShares }}</md-table-cell>
               <md-table-cell>{{ totalInvested | toCurrency }}</md-table-cell>
               <md-table-cell>100%</md-table-cell>
             </md-table-row>
@@ -110,12 +110,12 @@
                   <span class="mobile-invested">{{ row.invested | toCurrency }}</span>
                 </div>
                 <div class="mobile-row mobile-sub">
-                  <span>{{ row.totalShares }} total shares</span>
-                  <span>{{ row.percentOfPot }}% of pot</span>
-                </div>
-                <div class="mobile-row mobile-sub">
                   <span>{{ row.myShares }} my shares</span>
                   <span>{{ row.percentOfTotalShares }}% of total shares</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ row.totalShares }} total shares</span>
+                  <span>{{ row.percentOfPot }}% of pot</span>
                 </div>
               </md-table-cell>
             </md-table-row>
@@ -126,12 +126,12 @@
                   <span class="mobile-invested">{{ totalInvested | toCurrency }}</span>
                 </div>
                 <div class="mobile-row mobile-sub">
-                  <span>{{ totalShares }} total shares</span>
-                  <span>100% of pot</span>
-                </div>
-                <div class="mobile-row mobile-sub">
                   <span>{{ totalMyShares }} my shares</span>
                   <span>{{ totalPercentOfTotalShares }}% of total shares</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ totalShares }} total shares</span>
+                  <span>100% of pot</span>
                 </div>
               </md-table-cell>
             </md-table-row>
