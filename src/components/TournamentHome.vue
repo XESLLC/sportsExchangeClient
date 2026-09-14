@@ -78,19 +78,25 @@
           <md-table class="web-table text-left">
             <md-table-row>
               <md-table-head>Team</md-table-head>
-              <md-table-head>Shares</md-table-head>
+              <md-table-head>Total Shares</md-table-head>
+              <md-table-head>% of Total Shares</md-table-head>
+              <md-table-head>My Shares</md-table-head>
               <md-table-head>Invested</md-table-head>
               <md-table-head>% of Pot</md-table-head>
             </md-table-row>
             <md-table-row v-for="row in teamInvestments" :key="row.teamName">
               <md-table-cell>{{ row.teamName }}</md-table-cell>
-              <md-table-cell>{{ row.shares }}</md-table-cell>
+              <md-table-cell>{{ row.totalShares }}</md-table-cell>
+              <md-table-cell>{{ row.percentOfTotalShares }}%</md-table-cell>
+              <md-table-cell>{{ row.myShares }}</md-table-cell>
               <md-table-cell>{{ row.invested | toCurrency }}</md-table-cell>
               <md-table-cell>{{ row.percentOfPot }}%</md-table-cell>
             </md-table-row>
             <md-table-row class="totals-row">
               <md-table-cell>Total</md-table-cell>
               <md-table-cell>{{ totalShares }}</md-table-cell>
+              <md-table-cell>{{ totalPercentOfTotalShares }}%</md-table-cell>
+              <md-table-cell>{{ totalMyShares }}</md-table-cell>
               <md-table-cell>{{ totalInvested | toCurrency }}</md-table-cell>
               <md-table-cell>100%</md-table-cell>
             </md-table-row>
@@ -104,8 +110,12 @@
                   <span class="mobile-invested">{{ row.invested | toCurrency }}</span>
                 </div>
                 <div class="mobile-row mobile-sub">
-                  <span>{{ row.shares }} shares</span>
+                  <span>{{ row.totalShares }} total shares</span>
                   <span>{{ row.percentOfPot }}% of pot</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ row.myShares }} my shares</span>
+                  <span>{{ row.percentOfTotalShares }}% of total shares</span>
                 </div>
               </md-table-cell>
             </md-table-row>
@@ -116,8 +126,12 @@
                   <span class="mobile-invested">{{ totalInvested | toCurrency }}</span>
                 </div>
                 <div class="mobile-row mobile-sub">
-                  <span>{{ totalShares }} shares</span>
+                  <span>{{ totalShares }} total shares</span>
                   <span>100% of pot</span>
+                </div>
+                <div class="mobile-row mobile-sub">
+                  <span>{{ totalMyShares }} my shares</span>
+                  <span>{{ totalPercentOfTotalShares }}% of total shares</span>
                 </div>
               </md-table-cell>
             </md-table-row>
@@ -211,6 +225,8 @@ export default {
       totalPot: 0,
       teamInvestments: [],
       totalShares: 0,
+      totalMyShares: 0,
+      totalPercentOfTotalShares: 0,
       totalInvested: 0,
       rankedSummaries: [],
       myEntries: [],
@@ -284,6 +300,7 @@ export default {
         query: gql`
           query TournamentTeams($tournamentId: ID!) {
             tournamentTeams(tournamentId: $tournamentId) {
+              id
               teamName
               ipoPrice
               stocksPurchased
@@ -293,6 +310,35 @@ export default {
         variables: { tournamentId: this.tournamentId }
       });
       return response.data.tournamentTeams;
+    },
+    // Sums shares owned per team across every entry the current user
+    // owns in this tournament (usually one, but co-owned/multi-entry
+    // players can have more).
+    async fetchMyShares(entryIds) {
+      if (!entryIds || entryIds.length === 0) {
+        return {};
+      }
+      const responses = await Promise.all(entryIds.map(entryId =>
+        apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query StocksByEntryId($entryId: ID!) {
+              stocksByEntryId(entryId: $entryId) {
+                tournamentTeamId
+                quantity
+              }
+            }
+          `,
+          variables: { entryId }
+        })
+      ));
+      const sharesByTeamId = {};
+      responses.forEach((response) => {
+        (response.data.stocksByEntryId || []).forEach((stock) => {
+          sharesByTeamId[stock.tournamentTeamId] = (sharesByTeamId[stock.tournamentTeamId] || 0) + stock.quantity;
+        });
+      });
+      return sharesByTeamId;
     },
     async fetchUserEntries() {
       const email = sessionStorage.getItem('sports-exchange.email');
@@ -335,17 +381,34 @@ export default {
       this.myEntryNames = [];
       this.teamInvestments = [];
       this.totalShares = 0;
+      this.totalMyShares = 0;
+      this.totalPercentOfTotalShares = 0;
       this.totalInvested = 0;
 
       await this.fetchTournament();
 
+      const userEntriesForTournament = await this.fetchUserEntries();
+      this.myEntryNames = userEntriesForTournament.map(e => e.name);
+      const myEntryIds = userEntriesForTournament.map(e => e.id);
+
       try {
-        const teams = await this.fetchTeamInvestments();
-        const rows = teams.map(t => ({
-          teamName: t.teamName,
-          shares: t.stocksPurchased || 0,
-          invested: (t.stocksPurchased || 0) * t.ipoPrice
-        }));
+        const [teams, myShares] = await Promise.all([
+          this.fetchTeamInvestments(),
+          this.fetchMyShares(myEntryIds)
+        ]);
+        const rows = teams.map(t => {
+          const totalTeamShares = t.stocksPurchased || 0;
+          const myTeamShares = myShares[t.id] || 0;
+          return {
+            teamName: t.teamName,
+            totalShares: totalTeamShares,
+            myShares: myTeamShares,
+            percentOfTotalShares: totalTeamShares > 0
+              ? Math.round((myTeamShares / totalTeamShares) * 1000) / 10
+              : 0,
+            invested: totalTeamShares * t.ipoPrice
+          };
+        });
         const totalInvested = rows.reduce((sum, r) => sum + r.invested, 0);
         rows.sort((a, b) => b.invested - a.invested);
         rows.forEach(r => {
@@ -354,14 +417,15 @@ export default {
             : 0;
         });
         this.teamInvestments = rows;
-        this.totalShares = rows.reduce((sum, r) => sum + r.shares, 0);
+        this.totalShares = rows.reduce((sum, r) => sum + r.totalShares, 0);
+        this.totalMyShares = rows.reduce((sum, r) => sum + r.myShares, 0);
+        this.totalPercentOfTotalShares = this.totalShares > 0
+          ? Math.round((this.totalMyShares / this.totalShares) * 1000) / 10
+          : 0;
         this.totalInvested = totalInvested;
       } catch (err) {
         this.teamInvestments = [];
       }
-
-      const userEntriesForTournament = await this.fetchUserEntries();
-      this.myEntryNames = userEntriesForTournament.map(e => e.name);
 
       let summaries = [];
       try {
