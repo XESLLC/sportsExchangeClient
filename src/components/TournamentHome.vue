@@ -77,14 +77,14 @@
 
           <md-table class="web-table text-left">
             <md-table-row>
-              <md-table-head>Team</md-table-head>
-              <md-table-head>My Shares</md-table-head>
-              <md-table-head>% of Total Shares</md-table-head>
-              <md-table-head>Total Shares</md-table-head>
-              <md-table-head>Total Invested</md-table-head>
-              <md-table-head>% of Pot</md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('teamName')">Team <span class="sort-icon">{{ investmentSortIcon('teamName') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('myShares')">My Shares <span class="sort-icon">{{ investmentSortIcon('myShares') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('percentOfTotalShares')">% of Total Shares <span class="sort-icon">{{ investmentSortIcon('percentOfTotalShares') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('totalShares')">Total Shares <span class="sort-icon">{{ investmentSortIcon('totalShares') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('invested')">Total Invested <span class="sort-icon">{{ investmentSortIcon('invested') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('percentOfPot')">% of Pot <span class="sort-icon">{{ investmentSortIcon('percentOfPot') }}</span></md-table-head>
             </md-table-row>
-            <md-table-row v-for="row in teamInvestments" :key="row.teamName">
+            <md-table-row v-for="row in sortedTeamInvestments" :key="row.teamName">
               <md-table-cell>{{ row.teamName }}</md-table-cell>
               <md-table-cell>{{ row.myShares }}</md-table-cell>
               <md-table-cell>{{ row.percentOfTotalShares }}%</md-table-cell>
@@ -103,7 +103,7 @@
           </md-table>
 
           <md-table class="mobile-table text-left">
-            <md-table-row v-for="row in teamInvestments" :key="row.teamName + '-mobile'">
+            <md-table-row v-for="row in sortedTeamInvestments" :key="row.teamName + '-mobile'">
               <md-table-cell>
                 <div class="mobile-row">
                   <span class="mobile-team-name">{{ row.teamName }}</span>
@@ -234,7 +234,9 @@ export default {
       rankingsError: false,
       myEntryNames: [],
       activeTournaments: [],
-      showExchangeSwitcher: false
+      showExchangeSwitcher: false,
+      investmentSortField: 'invested',
+      investmentSortOrder: 'desc'
     }
   },
   watch: {
@@ -245,7 +247,33 @@ export default {
       this.isPageReady = true;
     }
   },
+  computed: {
+    sortedTeamInvestments() {
+      const field = this.investmentSortField;
+      const dir = this.investmentSortOrder === 'asc' ? 1 : -1;
+      return [...this.teamInvestments].sort((a, b) => {
+        const aVal = a[field];
+        const bVal = b[field];
+        if (typeof aVal === 'string') {
+          return aVal.localeCompare(bVal) * dir;
+        }
+        return (aVal - bVal) * dir;
+      });
+    }
+  },
   methods: {
+    sortInvestments(field) {
+      if (this.investmentSortField === field) {
+        this.investmentSortOrder = this.investmentSortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.investmentSortField = field;
+        this.investmentSortOrder = field === 'teamName' ? 'asc' : 'desc';
+      }
+    },
+    investmentSortIcon(field) {
+      if (this.investmentSortField !== field) return '⇅';
+      return this.investmentSortOrder === 'asc' ? '▲' : '▼';
+    },
     switchTournament(tournamentId) {
       this.showExchangeSwitcher = false;
       if (tournamentId !== this.tournamentId) {
@@ -410,7 +438,8 @@ export default {
           };
         });
         const totalInvested = rows.reduce((sum, r) => sum + r.invested, 0);
-        rows.sort((a, b) => b.invested - a.invested);
+        // Display order comes from sortedTeamInvestments (user-sortable);
+        // this array's own order doesn't matter.
         rows.forEach(r => {
           r.percentOfPot = totalInvested > 0
             ? Math.round((r.invested / totalInvested) * 1000) / 10
@@ -538,6 +567,21 @@ export default {
 .team-investment-heading {
   margin: 0 0 8px;
   font-weight: bold;
+}
+
+.team-investment .sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.team-investment .sortable:hover {
+  background: #ebebeb;
+}
+
+.team-investment .sort-icon {
+  font-size: 10px;
+  color: #888;
+  margin-left: 4px;
 }
 
 .totals-row td {
