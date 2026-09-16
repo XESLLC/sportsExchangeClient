@@ -21,6 +21,9 @@
           <span class="link decorated-link" @click="toggleOrientation">
             Show {{ orientation === 'byPortfolio' ? 'teams as rows' : 'portfolios as rows' }}
           </span>
+          <span class="link decorated-link csv-link" @click="toggleMetric">
+            Show {{ metric === 'shares' ? '% of team owned' : 'share counts' }}
+          </span>
           <span v-if="rows.length" class="link decorated-link csv-link" @click="downloadCsv">
             Download CSV (opens in Excel)
           </span>
@@ -50,8 +53,8 @@
                 <td
                   v-for="col in columns"
                   :key="col.id"
-                  :class="{ zero: cell(row.id, col.id) === 0 }"
-                >{{ cell(row.id, col.id) || '' }}</td>
+                  :class="{ zero: cellRaw(row.id, col.id) === 0 }"
+                >{{ cellDisplay(row.id, col.id) }}</td>
                 <td class="total-col">{{ row.total }}</td>
               </tr>
             </tbody>
@@ -91,10 +94,16 @@ export default {
       teams: [],
       portfolios: [],
       sharesByKey: {},
-      orientation: 'byPortfolio'
+      orientation: 'byPortfolio',
+      metric: 'shares'
     }
   },
   computed: {
+    teamTotalsById() {
+      const map = {};
+      this.teams.forEach(t => { map[t.tournamentTeamId] = t.totalShares; });
+      return map;
+    },
     rows() {
       return this.orientation === 'byPortfolio' ? this.portfolioAxis : this.teamAxis;
     },
@@ -127,6 +136,9 @@ export default {
     toggleOrientation() {
       this.orientation = this.orientation === 'byPortfolio' ? 'byTeam' : 'byPortfolio';
     },
+    toggleMetric() {
+      this.metric = this.metric === 'shares' ? 'percent' : 'shares';
+    },
     downloadCsv() {
       const esc = (v) => {
         const s = String(v == null ? '' : v);
@@ -137,7 +149,11 @@ export default {
       lines.push([cornerLabel, ...this.columns.map(c => c.label), 'Total'].map(esc).join(','));
       this.rows.forEach((row) => {
         const label = row.sublabel ? `${row.label} (${row.sublabel})` : row.label;
-        lines.push([label, ...this.columns.map(c => this.cell(row.id, c.id) || 0), row.total].map(esc).join(','));
+        const values = this.columns.map(c => {
+          const display = this.cellDisplay(row.id, c.id);
+          return display === '' ? (this.metric === 'shares' ? 0 : '0%') : display;
+        });
+        lines.push([label, ...values, row.total].map(esc).join(','));
       });
       lines.push(['Total', ...this.columns.map(c => c.total), this.grandTotal].map(esc).join(','));
 
@@ -153,10 +169,19 @@ export default {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     },
-    cell(rowId, colId) {
+    cellRaw(rowId, colId) {
       const entryId = this.orientation === 'byPortfolio' ? rowId : colId;
       const teamId = this.orientation === 'byPortfolio' ? colId : rowId;
       return this.sharesByKey[entryId + '|' + teamId] || 0;
+    },
+    cellDisplay(rowId, colId) {
+      const raw = this.cellRaw(rowId, colId);
+      if (raw === 0) return '';
+      if (this.metric === 'shares') return raw;
+      const teamId = this.orientation === 'byPortfolio' ? colId : rowId;
+      const teamTotal = this.teamTotalsById[teamId] || 0;
+      if (!teamTotal) return '';
+      return (raw / teamTotal * 100).toFixed(1) + '%';
     },
     goToExchangeHome() {
       this.$router.push({ name: 'TournamentHome', params: { tournamentId: this.tournamentId } });
