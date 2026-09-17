@@ -51,6 +51,34 @@
       </md-card-content>
     </md-card>
 
+    <!-- Transactions -->
+    <md-card v-if="myEntries.length > 0" class="section-card">
+      <md-card-header>
+        <div class="md-title">Transactions</div>
+      </md-card-header>
+      <md-card-content>
+        <div v-if="transactionsError" class="rankings-unavailable">
+          Transaction history not available right now.
+        </div>
+        <div v-else-if="recentTransactions.length === 0" class="rankings-unavailable">
+          No buy, sell, or trade activity yet.
+        </div>
+        <div v-else class="transactions-list">
+          <div v-for="t in recentTransactions" :key="t.id" class="transaction-row">
+            <span class="transaction-type" :class="'type-' + t.type.toLowerCase()">{{ t.type }}</span>
+            <span class="transaction-detail">
+              {{ t.quantity }} share{{ t.quantity === 1 ? '' : 's' }} of {{ t.teamName }}
+              <span v-if="t.cost > 0"> for {{ t.cost | toCurrency }}</span>
+            </span>
+            <span class="transaction-date">{{ t.date.toLocaleDateString() }}</span>
+          </div>
+        </div>
+        <div class="bid-offer-link-row">
+          <md-button class="md-primary md-raised" @click="goToBidOrOffer">Place a Bid / Make an Offer</md-button>
+        </div>
+      </md-card-content>
+    </md-card>
+
     <!-- Message Board -->
     <md-card class="section-card">
       <md-card-header>
@@ -231,6 +259,8 @@ export default {
       rankedSummaries: [],
       myEntries: [],
       totalEntries: 0,
+      recentTransactions: [],
+      transactionsError: false,
       rankingsError: false,
       myEntryNames: [],
       activeTournaments: [],
@@ -301,6 +331,10 @@ export default {
     },
     goToOwnership() {
       this.$router.push({ name: 'TournamentOwnership', params: { tournamentId: this.tournamentId } });
+    },
+    goToBidOrOffer() {
+      const params = this.myEntries.length === 1 ? { entryId: this.myEntries[0].entryId } : {};
+      this.$router.push({ name: 'Transactions', params });
     },
     isMyEntry(entryName) {
       return this.myEntryNames.includes(entryName);
@@ -385,6 +419,28 @@ export default {
       });
       return response.data.userEntries.filter(e => e.tournamentId === this.tournamentId);
     },
+    // Tournament-wide, like fetchRankings below - filtered down to the
+    // current user's entries client-side (see init()).
+    async fetchTransactions() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query GetTournamentTransactions($tournamentId: ID!) {
+            getTournamentTransactions(tournamentId: $tournamentId) {
+              id
+              groupId
+              entry { id }
+              teamName
+              quantity
+              cost
+              createdAt
+            }
+          }
+        `,
+        variables: { tournamentId: this.tournamentId }
+      });
+      return response.data.getTournamentTransactions;
+    },
     async fetchRankings() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
@@ -407,6 +463,8 @@ export default {
       this.rankedSummaries = [];
       this.myEntries = [];
       this.myEntryNames = [];
+      this.recentTransactions = [];
+      this.transactionsError = false;
       this.teamInvestments = [];
       this.totalShares = 0;
       this.totalMyShares = 0;
@@ -454,6 +512,38 @@ export default {
         this.totalInvested = totalInvested;
       } catch (err) {
         this.teamInvestments = [];
+      }
+
+      try {
+        const allTransactions = await this.fetchTransactions();
+        // A trade's two legs (one per entry) share a groupId; a solo
+        // IPO buy or secondary-market sell doesn't, so this is how we
+        // tell "Traded" apart from "Bought"/"Sold" below.
+        const entryIdsByGroup = new Map();
+        allTransactions.forEach(t => {
+          if (!entryIdsByGroup.has(t.groupId)) entryIdsByGroup.set(t.groupId, new Set());
+          if (t.entry) entryIdsByGroup.get(t.groupId).add(t.entry.id);
+        });
+        const myEntryIdSet = new Set(myEntryIds);
+        this.recentTransactions = allTransactions
+          .filter(t => t.entry && myEntryIdSet.has(t.entry.id))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 6)
+          .map(t => {
+            const isTrade = (entryIdsByGroup.get(t.groupId) || new Set()).size > 1;
+            const type = isTrade ? 'Traded' : (t.cost > 0 ? 'Bought' : (t.cost < 0 ? 'Sold' : 'Adjusted'));
+            return {
+              id: t.id,
+              date: new Date(t.createdAt),
+              teamName: t.teamName,
+              type,
+              quantity: t.quantity,
+              cost: Math.abs(t.cost)
+            };
+          });
+      } catch (err) {
+        this.recentTransactions = [];
+        this.transactionsError = true;
       }
 
       let summaries = [];
@@ -678,6 +768,57 @@ export default {
 .rankings-unavailable {
   color: #777;
   padding: 8px 0;
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.transaction-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.transaction-type {
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.type-bought {
+  color: #24E22C;
+}
+
+.type-sold {
+  color: #e53935;
+}
+
+.type-traded {
+  color: #487233;
+}
+
+.type-adjusted {
+  color: #888;
+}
+
+.transaction-detail {
+  flex: 1;
+  color: #333;
+}
+
+.transaction-date {
+  color: #999;
+  font-size: 0.85em;
+}
+
+.bid-offer-link-row {
+  margin-top: 16px;
+  text-align: center;
 }
 
 .my-row td {
