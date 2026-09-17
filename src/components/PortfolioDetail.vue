@@ -178,14 +178,16 @@ export default {
         return 0;
       }
       const totalDividend = teamData.milestoneData.reduce((sum, milestone) => sum + (milestone.dividendPrice || 0), 0);
-      return this.truncateDecimals(totalDividend / teamData.numStocksInCirculation, 2);
+      // Keep full precision here - this feeds totalDividends below, which is where
+      // rounding actually belongs (after multiplying by shares owned, not before).
+      return totalDividend / teamData.numStocksInCirculation;
     },
     enrichStocks() {
       this.tournamentTeamStocks = this.rawStocks.map((teamStock) => {
         const total = teamStock.actualTotalCost != null ? teamStock.actualTotalCost : (teamStock.ipoPrice * teamStock.quantity);
         const costPerShare = teamStock.quantity > 0 ? total / teamStock.quantity : 0;
         const dividendPerShare = this.getDividendPerShare(teamStock.tournamentTeamId);
-        const totalDividends = dividendPerShare * teamStock.quantity;
+        const totalDividends = this.truncateDecimals(dividendPerShare * teamStock.quantity, 2);
         const profitLossPerShare = dividendPerShare - costPerShare;
         const totalProfitLoss = totalDividends - total;
 
