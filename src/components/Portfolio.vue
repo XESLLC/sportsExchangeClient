@@ -316,6 +316,10 @@ export default {
     }
   },
   async created() {
+    const requestedTab = this.$route.query.tab;
+    if (['detail', 'summary', 'payouts', 'rankings', 'owners'].includes(requestedTab)) {
+      this.contentToShow = requestedTab;
+    }
     await this.fetchUserEntries();
     if(this.selectedEntry) {
       await this.fetchPayoutData();

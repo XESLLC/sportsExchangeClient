@@ -12,15 +12,10 @@
             <th class="sortable" @click="sortBy('totalInitialInvestment')">Total $ IPO Investment <span class="sort-icon">{{ sortIcon('totalInitialInvestment') }}</span></th>
             <th class="sortable" @click="sortBy('totalInitialStocksOwned')">Total IPO Shares Purchased <span class="sort-icon">{{ sortIcon('totalInitialStocksOwned') }}</span></th>
             <th class="sortable" @click="sortBy('totalCurrentStocksOwned')">Total Current Shares Owned <span class="sort-icon">{{ sortIcon('totalCurrentStocksOwned') }}</span></th>
-            <th class="sortable" @click="sortBy('stocksRemaining')">Shares Remaining <span class="sort-icon">{{ sortIcon('stocksRemaining') }}</span></th>
-            <th class="sortable" @click="sortBy('percentStocksRemaining')">% Remaining <span class="sort-icon">{{ sortIcon('percentStocksRemaining') }}</span></th>
             <th class="sortable" @click="sortBy('totalCurrentTeamsOwned')">Current Teams Owned <span class="sort-icon">{{ sortIcon('totalCurrentTeamsOwned') }}</span></th>
-            <th class="sortable" @click="sortBy('totalCurrentTeamsRemaining')">Teams Remaining <span class="sort-icon">{{ sortIcon('totalCurrentTeamsRemaining') }}</span></th>
             <th class="sortable" @click="sortBy('moneyWonToDate')">$ Won to Date <span class="sort-icon">{{ sortIcon('moneyWonToDate') }}</span></th>
             <th class="sortable" @click="sortBy('percentMoneyWonInvested')">Won % Money Invested <span class="sort-icon">{{ sortIcon('percentMoneyWonInvested') }}</span></th>
-            <th class="sortable" @click="sortBy('originalMoneyRemaining')">$ Remaining (At IPO Price) <span class="sort-icon">{{ sortIcon('originalMoneyRemaining') }}</span></th>
             <th class="sortable" @click="sortBy('profitLoss')">Profit/Loss <span class="sort-icon">{{ sortIcon('profitLoss') }}</span></th>
-            <th class="sortable" @click="sortBy('percentMoneyRemaining')">$ Remaining % Money Invested <span class="sort-icon">{{ sortIcon('percentMoneyRemaining') }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -31,15 +26,10 @@
             <td>{{ item.totalInitialInvestment | toCurrency }}</td>
             <td>{{ item.totalInitialStocksOwned }}</td>
             <td>{{ item.totalCurrentStocksOwned }}</td>
-            <td>{{ item.stocksRemaining }}</td>
-            <td>{{ item.percentStocksRemaining.toFixed(2) }}%</td>
             <td>{{ item.totalCurrentTeamsOwned }}</td>
-            <td>{{ item.totalCurrentTeamsRemaining }}</td>
             <td>{{ item.moneyWonToDate | toCurrency }}</td>
             <td>{{ item.percentMoneyWonInvested.toFixed(2) }}%</td>
-            <td>{{ item.originalMoneyRemaining | toCurrency }}</td>
             <td>{{ item.profitLoss | toCurrency }}</td>
-            <td>{{ item.percentMoneyRemaining.toFixed(2) }}%</td>
           </tr>
         </tbody>
       </table>
@@ -65,20 +55,8 @@
           <div>{{selectedEntry.totalCurrentStocksOwned}}</div>
         </div>
         <div class="section">
-          <div class="section-header">Stocks Remaining</div>
-          <div>{{selectedEntry.stocksRemaining}}</div>
-        </div>
-        <div class="section">
-          <div class="section-header">% Stocks Remaining</div>
-          <div>{{selectedEntry.percentStocksRemaining.toFixed(2)}}</div>
-        </div>
-        <div class="section">
           <div class="section-header">Total Current Teams Owned</div>
           <div>{{selectedEntry.totalCurrentTeamsOwned}}</div>
-        </div>
-        <div class="section">
-          <div class="section-header">Total Current Teams Remaining</div>
-          <div>{{selectedEntry.totalCurrentTeamsRemaining}}</div>
         </div>
         <div class="section">
           <div class="section-header">$ Won to Date</div>
@@ -89,16 +67,26 @@
           <div>{{selectedEntry.percentMoneyWonInvested.toFixed(2)}}</div>
         </div>
         <div class="section">
-          <div class="section-header">$ Remaining (At IPO Price)</div>
-          <div>{{selectedEntry.originalMoneyRemaining | toCurrency}}</div>
-        </div>
-        <div class="section">
           <div class="section-header">Profit/Loss</div>
           <div>{{selectedEntry.profitLoss | toCurrency}}</div>
         </div>
         <div class="section">
-          <div class="section-header">$ Remaining % Money Invested</div>
-          <div>{{selectedEntry.percentMoneyRemaining.toFixed(2)}}</div>
+          <div class="section-header">Stock Holdings</div>
+          <div v-if="selectedEntryHoldings.length === 0" class="no-holdings">No shares currently owned.</div>
+          <table v-else class="holdings-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Shares Owned</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="holding in selectedEntryHoldings" :key="holding.tournamentTeamId" :class="{ eliminated: holding.isEliminated }">
+                <td>{{ holding.teamName }}</td>
+                <td>{{ holding.shares }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </md-dialog-content>
 
@@ -126,6 +114,8 @@ export default {
       showRankDetailModal: false,
       selectedEntry: null,
       portfolioSummaries: [],
+      teams: [],
+      sharesByEntryId: {},
       sortField: 'percentMoneyWonInvested',
       sortOrder: 'desc'
     }
@@ -141,6 +131,19 @@ export default {
         }
         return dir * (aVal - bVal);
       });
+    },
+    selectedEntryHoldings() {
+      if (!this.selectedEntry) return [];
+      const shares = this.sharesByEntryId[this.selectedEntry.entryId] || {};
+      return this.teams
+        .filter(team => shares[team.tournamentTeamId] > 0)
+        .map(team => ({
+          tournamentTeamId: team.tournamentTeamId,
+          teamName: team.teamName,
+          isEliminated: team.isEliminated,
+          shares: shares[team.tournamentTeamId]
+        }))
+        .sort((a, b) => b.shares - a.shares || a.teamName.localeCompare(b.teamName));
     }
   },
   props: {
@@ -171,32 +174,67 @@ export default {
       if (this.sortField !== field) return '⇅';
       return this.sortOrder === 'asc' ? '▲' : '▼';
     },
-    async init() {
+    async fetchOwnership() {
       const response = await apolloClient.query({
         fetchPolicy: 'no-cache',
         query: gql`
-          query PortfolioSummaries($tournamentId: ID!) {
-            portfolioSummaries(tournamentId: $tournamentId) {
-              ownerName,
-              entryName,
-              totalInitialInvestment,
-              totalInitialStocksOwned,
-              totalCurrentStocksOwned,
-              stocksRemaining,
-              percentStocksRemaining,
-              totalCurrentTeamsOwned,
-              totalCurrentTeamsRemaining,
-              moneyWonToDate,
-              percentMoneyWonInvested,
-              originalMoneyRemaining,
-              profitLoss,
-              percentMoneyRemaining
+          query TournamentOwnership($tournamentId: ID!) {
+            tournamentOwnership(tournamentId: $tournamentId) {
+              teams {
+                tournamentTeamId
+                teamName
+                isEliminated
+                totalShares
+              }
+              portfolios {
+                entryId
+                holdings {
+                  tournamentTeamId
+                  shares
+                }
+              }
             }
           }
         `,
         variables: { tournamentId: this.tournamentId }
       });
-      this.portfolioSummaries = response.data.portfolioSummaries;
+
+      const data = response.data.tournamentOwnership;
+      this.teams = data.teams;
+
+      const sharesByEntryId = {};
+      data.portfolios.forEach(p => {
+        const row = {};
+        p.holdings.forEach(h => { row[h.tournamentTeamId] = h.shares; });
+        sharesByEntryId[p.entryId] = row;
+      });
+      this.sharesByEntryId = sharesByEntryId;
+    },
+    async init() {
+      const [summariesResponse] = await Promise.all([
+        apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query PortfolioSummaries($tournamentId: ID!) {
+              portfolioSummaries(tournamentId: $tournamentId) {
+                entryId,
+                ownerName,
+                entryName,
+                totalInitialInvestment,
+                totalInitialStocksOwned,
+                totalCurrentStocksOwned,
+                totalCurrentTeamsOwned,
+                moneyWonToDate,
+                percentMoneyWonInvested,
+                profitLoss
+              }
+            }
+          `,
+          variables: { tournamentId: this.tournamentId }
+        }),
+        this.fetchOwnership()
+      ]);
+      this.portfolioSummaries = summariesResponse.data.portfolioSummaries;
     }
   },
   async created() {
@@ -221,6 +259,28 @@ export default {
 
 .section-header {
   font-weight: bold;
+}
+
+.no-holdings {
+  color: #777;
+}
+
+.holdings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+
+.holdings-table th,
+.holdings-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, .12);
+}
+
+.holdings-table .eliminated td {
+  text-decoration: line-through;
+  color: #999;
 }
 
 .table-wrapper {

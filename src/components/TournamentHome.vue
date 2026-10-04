@@ -111,6 +111,7 @@
               <md-table-head class="sortable" @click.native="sortInvestments('totalShares')">Total Shares <span class="sort-icon">{{ investmentSortIcon('totalShares') }}</span></md-table-head>
               <md-table-head class="sortable" @click.native="sortInvestments('invested')">Total Invested <span class="sort-icon">{{ investmentSortIcon('invested') }}</span></md-table-head>
               <md-table-head class="sortable" @click.native="sortInvestments('percentOfPot')">% of Pot <span class="sort-icon">{{ investmentSortIcon('percentOfPot') }}</span></md-table-head>
+              <md-table-head class="sortable" @click.native="sortInvestments('returnPerShare')">$ Return per Share <span class="sort-icon">{{ investmentSortIcon('returnPerShare') }}</span></md-table-head>
             </md-table-row>
             <md-table-row v-for="row in sortedTeamInvestments" :key="row.teamName">
               <md-table-cell>{{ row.teamName }}</md-table-cell>
@@ -119,6 +120,7 @@
               <md-table-cell>{{ row.totalShares }}</md-table-cell>
               <md-table-cell>{{ row.invested | toCurrency }}</md-table-cell>
               <md-table-cell>{{ row.percentOfPot }}%</md-table-cell>
+              <md-table-cell :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrency }}</md-table-cell>
             </md-table-row>
             <md-table-row class="totals-row">
               <md-table-cell>Total</md-table-cell>
@@ -127,6 +129,7 @@
               <md-table-cell>{{ totalShares }}</md-table-cell>
               <md-table-cell>{{ totalInvested | toCurrency }}</md-table-cell>
               <md-table-cell>100%</md-table-cell>
+              <md-table-cell :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrency }}</md-table-cell>
             </md-table-row>
           </md-table>
 
@@ -145,6 +148,10 @@
                   <span>{{ row.totalShares }} total shares</span>
                   <span>{{ row.percentOfPot }}% of pot</span>
                 </div>
+                <div class="mobile-row mobile-sub">
+                  <span>$ Return per Share:</span>
+                  <span :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrency }}</span>
+                </div>
               </md-table-cell>
             </md-table-row>
             <md-table-row class="totals-row">
@@ -161,6 +168,10 @@
                   <span>{{ totalShares }} total shares</span>
                   <span>100% of pot</span>
                 </div>
+                <div class="mobile-row mobile-sub">
+                  <span>$ Return per Share:</span>
+                  <span :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrency }}</span>
+                </div>
               </md-table-cell>
             </md-table-row>
           </md-table>
@@ -174,6 +185,9 @@
         <div class="md-title">Rankings</div>
       </md-card-header>
       <md-card-content>
+        <div class="view-detailed-rankings-row">
+          <span class="link decorated-link" @click="goToDetailedRankings()">View Detailed Rankings</span>
+        </div>
         <div v-if="rankingsError" class="rankings-unavailable">
           Rankings not yet available for this tournament.
         </div>
@@ -256,6 +270,7 @@ export default {
       totalMyShares: 0,
       totalPercentOfTotalShares: 0,
       totalInvested: 0,
+      totalReturnPerShare: 0,
       rankedSummaries: [],
       myEntries: [],
       totalEntries: 0,
@@ -292,6 +307,12 @@ export default {
     }
   },
   methods: {
+    truncateDecimals(number, digits) {
+      const multiplier = Math.pow(10, digits);
+      const adjustedNum = number * multiplier;
+      const truncatedNum = Math[adjustedNum < 0 ? 'ceil' : 'floor'](adjustedNum);
+      return truncatedNum / multiplier;
+    },
     sortInvestments(field) {
       if (this.investmentSortField === field) {
         this.investmentSortOrder = this.investmentSortOrder === 'asc' ? 'desc' : 'asc';
@@ -328,6 +349,10 @@ export default {
     },
     goToPortfolio(entryId) {
       this.$router.push({ name: 'Portfolio', params: { entryId } });
+    },
+    goToDetailedRankings() {
+      const params = this.myEntries.length === 1 ? { entryId: this.myEntries[0].entryId } : {};
+      this.$router.push({ name: 'Portfolio', params, query: { tab: 'rankings' } });
     },
     goToOwnership() {
       this.$router.push({ name: 'TournamentOwnership', params: { tournamentId: this.tournamentId } });
@@ -366,6 +391,10 @@ export default {
               teamName
               ipoPrice
               stocksPurchased
+              numStocksInCirculation
+              milestoneData {
+                dividendPrice
+              }
             }
           }
         `,
@@ -470,6 +499,7 @@ export default {
       this.totalMyShares = 0;
       this.totalPercentOfTotalShares = 0;
       this.totalInvested = 0;
+      this.totalReturnPerShare = 0;
 
       await this.fetchTournament();
 
@@ -485,6 +515,12 @@ export default {
         const rows = teams.map(t => {
           const totalTeamShares = t.stocksPurchased || 0;
           const myTeamShares = myShares[t.id] || 0;
+          // Same dividend-per-share calc as the Dividend Payouts tab
+          // (Portfolio.vue's getTotalDividendAmountForTeam): sum of every
+          // milestone's dividendPrice, divided by numStocksInCirculation
+          // (floors at 1, so an unpurchased team divides cleanly to 0).
+          const totalDividend = (t.milestoneData || []).reduce((sum, m) => sum + (m.dividendPrice || 0), 0);
+          const dividendPerShare = this.truncateDecimals(totalDividend / (t.numStocksInCirculation || 1), 2);
           return {
             teamName: t.teamName,
             totalShares: totalTeamShares,
@@ -492,7 +528,9 @@ export default {
             percentOfTotalShares: totalTeamShares > 0
               ? Math.round((myTeamShares / totalTeamShares) * 1000) / 10
               : 0,
-            invested: totalTeamShares * t.ipoPrice
+            invested: totalTeamShares * t.ipoPrice,
+            dividendPerShare,
+            returnPerShare: Math.round((dividendPerShare - t.ipoPrice) * 100) / 100
           };
         });
         const totalInvested = rows.reduce((sum, r) => sum + r.invested, 0);
@@ -510,6 +548,13 @@ export default {
           ? Math.round((this.totalMyShares / this.totalShares) * 1000) / 10
           : 0;
         this.totalInvested = totalInvested;
+        // Blended return per share across the whole pot: total dividends
+        // paid out minus total invested, spread over total shares - i.e.
+        // the totalShares-weighted average of each team's returnPerShare.
+        const totalDividendPaid = rows.reduce((sum, r) => sum + r.dividendPerShare * r.totalShares, 0);
+        this.totalReturnPerShare = this.totalShares > 0
+          ? Math.round(((totalDividendPaid - totalInvested) / this.totalShares) * 100) / 100
+          : 0;
       } catch (err) {
         this.teamInvestments = [];
       }
@@ -768,6 +813,10 @@ export default {
 .rankings-unavailable {
   color: #777;
   padding: 8px 0;
+}
+
+.view-detailed-rankings-row {
+  margin-bottom: 12px;
 }
 
 .transactions-list {
