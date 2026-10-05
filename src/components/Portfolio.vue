@@ -411,7 +411,6 @@ export default {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  white-space: nowrap;
 }
 
 .payouts-table th,
@@ -421,6 +420,10 @@ export default {
   border-bottom: 1px solid rgba(0, 0, 0, .12);
 }
 
+.payouts-table td {
+  white-space: nowrap;
+}
+
 .payouts-table thead th {
   position: sticky;
   top: 0;
@@ -428,6 +431,10 @@ export default {
   z-index: 2;
   font-size: 12px;
   font-weight: 500;
+  /* Let header labels wrap onto multiple lines instead of forcing the
+     column wider than the (much shorter) values in the rows below. */
+  white-space: normal;
+  max-width: 110px;
 }
 
 .payouts-table .sortable {
@@ -457,6 +464,7 @@ export default {
 .payouts-table thead .col-team {
   z-index: 4;
   background: #f5f5f5;
+  white-space: nowrap;
 }
 
 .payouts-table tbody tr:hover td {

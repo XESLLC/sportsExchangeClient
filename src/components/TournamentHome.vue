@@ -195,7 +195,7 @@
           No entries yet.
         </div>
         <div v-else>
-          <md-table class="web-table text-left">
+          <md-table class="web-table wrap-headers-table text-left">
             <md-table-row>
               <md-table-head>Rank</md-table-head>
               <md-table-head>Owner</md-table-head>
@@ -888,6 +888,26 @@ export default {
 
 .mobile-table {
   display: none;
+}
+
+/* Let column header labels wrap onto multiple lines instead of
+   vue-material's default single-line ellipsis, so a long header like
+   "Profit / Loss" doesn't force the column wider than the short values
+   underneath it. */
+.wrap-headers-table ::v-deep .md-table-head-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  height: auto;
+  line-height: 1.3;
+  max-width: 90px;
+  padding: 0 8px;
+}
+
+.wrap-headers-table ::v-deep .md-table-head-container {
+  height: auto;
+  min-height: 56px;
+  padding: 8px 0;
 }
 
 .mobile-row {

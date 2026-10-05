@@ -254,7 +254,6 @@ export default {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  white-space: nowrap;
 }
 
 .detail-table th,
@@ -262,6 +261,10 @@ export default {
   padding: 8px 16px;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, .12);
+}
+
+.detail-table td {
+  white-space: nowrap;
 }
 
 /* Sticky header */
@@ -272,6 +275,10 @@ export default {
   z-index: 2;
   font-size: 12px;
   font-weight: 500;
+  /* Let header labels wrap onto multiple lines instead of forcing the
+     column wider than the (much shorter) values in the rows below. */
+  white-space: normal;
+  max-width: 110px;
 }
 
 .detail-table .sortable {
@@ -306,6 +313,7 @@ export default {
 .detail-table thead .col-team {
   z-index: 4;
   background: #f5f5f5;
+  white-space: nowrap;
 }
 
 /* Hover highlight */

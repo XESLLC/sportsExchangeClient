@@ -293,7 +293,6 @@ export default {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  white-space: nowrap;
 }
 
 .rankings-table th,
@@ -301,6 +300,10 @@ export default {
   padding: 8px 16px;
   text-align: left;
   border-bottom: 1px solid rgba(0, 0, 0, .12);
+}
+
+.rankings-table td {
+  white-space: nowrap;
 }
 
 /* Sticky header */
@@ -311,6 +314,10 @@ export default {
   z-index: 2;
   font-size: 12px;
   font-weight: 500;
+  /* Let header labels wrap onto multiple lines instead of forcing the
+     column wider than the (much shorter) numbers in the rows below. */
+  white-space: normal;
+  max-width: 110px;
 }
 
 .rankings-table .sortable {
@@ -365,12 +372,14 @@ export default {
   border-right: 2px solid #ddd;
 }
 
-/* Header frozen cells need highest z-index (both sticky axes) */
+/* Header frozen cells need highest z-index (both sticky axes), and should
+   stay single-line/ellipsized like their data cells rather than wrap. */
 .rankings-table thead .col-rank,
 .rankings-table thead .col-owner,
 .rankings-table thead .col-entry {
   z-index: 4;
   background: #f5f5f5;
+  white-space: nowrap;
 }
 
 /* Hover highlight */
