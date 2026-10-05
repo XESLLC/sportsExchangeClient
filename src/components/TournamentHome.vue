@@ -103,7 +103,7 @@
         <div v-if="teamInvestments.length" class="team-investment">
           <div class="md-subheading team-investment-heading">Invested by Team</div>
 
-          <md-table class="web-table text-left">
+          <md-table class="web-table wrap-headers-table text-left">
             <md-table-row>
               <md-table-head class="sortable" @click.native="sortInvestments('teamName')">Team <span class="sort-icon">{{ investmentSortIcon('teamName') }}</span></md-table-head>
               <md-table-head class="sortable" @click.native="sortInvestments('myShares')">My Shares <span class="sort-icon">{{ investmentSortIcon('myShares') }}</span></md-table-head>
