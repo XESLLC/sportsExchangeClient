@@ -46,7 +46,7 @@
         </div>
 
         <div class="all-ownership-link-row">
-          <span class="link decorated-link all-ownership-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
+          <span class="link decorated-link home-card-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
         </div>
       </md-card-content>
     </md-card>
@@ -97,7 +97,7 @@
       <md-card-content>
         <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
         <div class="pot-ownership-link-row text-center">
-          <span class="link decorated-link all-ownership-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
+          <span class="link decorated-link home-card-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
         </div>
 
         <div v-if="teamInvestments.length" class="team-investment">
@@ -186,7 +186,7 @@
       </md-card-header>
       <md-card-content>
         <div class="view-detailed-rankings-row">
-          <span class="link decorated-link" @click="goToDetailedRankings()">View Detailed Rankings</span>
+          <span class="link decorated-link home-card-link" @click="goToDetailedRankings()">View Detailed Rankings &rarr;</span>
         </div>
         <div v-if="rankingsError" class="rankings-unavailable">
           Rankings not yet available for this tournament.
@@ -744,13 +744,14 @@ export default {
 
 .all-ownership-link-row {
   margin-top: 16px;
+  text-align: center;
 }
 
 .pot-ownership-link-row {
   margin-top: 8px;
 }
 
-.all-ownership-link {
+.home-card-link {
   font-weight: 600;
   font-size: 1.15em;
 }
@@ -817,6 +818,7 @@ export default {
 
 .view-detailed-rankings-row {
   margin-bottom: 12px;
+  text-align: center;
 }
 
 .transactions-list {

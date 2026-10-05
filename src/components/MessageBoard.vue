@@ -396,5 +396,6 @@ export default {
   margin-top: 12px;
   text-align: center;
   font-weight: 600;
+  font-size: 1.15em;
 }
 </style>
