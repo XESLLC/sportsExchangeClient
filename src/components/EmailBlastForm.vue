@@ -29,6 +29,10 @@
           </li>
         </ul>
         <div v-if="uploadingAttachment" class="upload-status">Uploading...</div>
+        <div v-if="uploadError" class="alert-error">
+          {{ uploadError }}
+          <span @click="uploadError = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
+        </div>
       </div>
     </md-card-content>
 
@@ -85,6 +89,10 @@ export default {
       htmlBody: '',
       attachments: [], // [{ filename, key, size }]
       uploadingAttachment: false,
+      // Kept separate from serverError so clicking Send doesn't wipe it -
+      // otherwise a failed upload goes unnoticed and the email silently
+      // goes out without the file.
+      uploadError: null,
       sending: false,
       serverError: null,
       resultInfo: null,
@@ -127,30 +135,42 @@ export default {
       });
       return response.data.getEmailAttachmentUploadUrl;
     },
+    // fetch() only rejects on network errors, so check the S3 response too.
+    async putToS3(uploadUrl, file) {
+      const res = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+      if (!res.ok) {
+        throw new Error(`S3 upload failed (${res.status})`);
+      }
+    },
     // Fired by vue2-editor when someone inserts an image/gif inline via the
     // toolbar. Uploads straight to S3, then swaps in the public URL so it
     // renders inline in the email body itself.
     async handleImageAdded(file, Editor, cursorLocation, resetUploader) {
       try {
         const { uploadUrl, publicUrl } = await this.getPresignedUpload(file);
-        await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+        await this.putToS3(uploadUrl, file);
         Editor.insertEmbed(cursorLocation, 'image', publicUrl);
         resetUploader();
       } catch (err) {
-        this.serverError = 'Failed to upload image';
+        this.uploadError = `Failed to upload image "${file.name}"`;
       }
     },
     async handleAttachmentPicked(event) {
       const files = Array.from(event.target.files || []);
       this.uploadingAttachment = true;
-      try {
-        for (const file of files) {
+      this.uploadError = null;
+      const failed = [];
+      for (const file of files) {
+        try {
           const { uploadUrl, key } = await this.getPresignedUpload(file);
-          await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+          await this.putToS3(uploadUrl, file);
           this.attachments.push({ filename: file.name, key, size: file.size });
+        } catch (err) {
+          failed.push(file.name);
         }
-      } catch (err) {
-        this.serverError = 'Failed to upload attachment';
+      }
+      if (failed.length > 0) {
+        this.uploadError = `Failed to upload attachment(s): ${failed.join(', ')} - they will NOT be sent. Try again.`;
       }
       this.uploadingAttachment = false;
       event.target.value = '';
@@ -159,6 +179,11 @@ export default {
       this.attachments.splice(idx, 1);
     },
     confirmSend() {
+      if (this.uploadError && !confirm(`${this.uploadError}
+
+Send anyway without them?`)) {
+        return;
+      }
       if (!confirm(`Send this email to ${this.recipientCount} participant(s)? This can't be undone.`)) {
         return;
       }
@@ -203,6 +228,7 @@ export default {
         this.subject = '';
         this.htmlBody = '';
         this.attachments = [];
+        this.uploadError = null;
         await this.fetchHistory();
       } catch (err) {
         if (err.graphQLErrors && err.graphQLErrors.length > 0) {
