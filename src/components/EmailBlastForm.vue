@@ -155,6 +155,25 @@ export default {
         this.uploadError = `Failed to upload image "${file.name}"`;
       }
     },
+    // Images pasted or dragged into the editor bypass handleImageAdded and
+    // land in the HTML as base64 data: URIs - that blows past the API's
+    // request size limit, and Gmail strips data: images anyway. Upload each
+    // one to S3 and swap in its public URL before sending.
+    async uploadInlineDataImages(html) {
+      const dataUriPattern = /src="(data:(image\/[a-zA-Z0-9.+-]+);base64,([^"]+))"/g;
+      const matches = [...html.matchAll(dataUriPattern)];
+      let result = html;
+      for (const [index, match] of matches.entries()) {
+        const [, dataUri, contentType, base64] = match;
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const extension = contentType.split('/')[1].replace('jpeg', 'jpg').replace(/\+.*/, '');
+        const file = new File([bytes], `pasted-image-${index + 1}.${extension}`, { type: contentType });
+        const { uploadUrl, publicUrl } = await this.getPresignedUpload(file);
+        await this.putToS3(uploadUrl, file);
+        result = result.split(dataUri).join(publicUrl);
+      }
+      return result;
+    },
     async handleAttachmentPicked(event) {
       const files = Array.from(event.target.files || []);
       this.uploadingAttachment = true;
@@ -193,6 +212,13 @@ Send anyway without them?`)) {
       this.sending = true;
       this.serverError = null;
       this.resultInfo = null;
+      try {
+        this.htmlBody = await this.uploadInlineDataImages(this.htmlBody);
+      } catch (err) {
+        this.serverError = 'Failed to upload an inline image - email was NOT sent. Try inserting it with the image button instead.';
+        this.sending = false;
+        return;
+      }
       try {
         const response = await apolloClient.mutate({
           fetchPolicy: 'no-cache',
