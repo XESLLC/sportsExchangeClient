@@ -1,6 +1,9 @@
 <template>
   <div v-if="isPageReady">
     <h2>Portfolio Rankings</h2>
+    <div v-if="portfolioSummaries.length" class="pot-paid-out">
+      {{ totalPaidOut | toCurrency }} paid out of {{ totalPot | toCurrency }} pot &middot; {{ percentPotPaidOut }}% of pot
+    </div>
 
     <div class="table-wrapper">
       <table class="rankings-table">
@@ -121,6 +124,16 @@ export default {
     }
   },
   computed: {
+    // Total Pot = all IPO cash spent (same as the server's tournament totalPot).
+    totalPot() {
+      return Math.round(this.portfolioSummaries.reduce((sum, s) => sum + (s.totalInitialInvestment || 0), 0) * 100) / 100;
+    },
+    totalPaidOut() {
+      return Math.round(this.portfolioSummaries.reduce((sum, s) => sum + (s.moneyWonToDate || 0), 0) * 100) / 100;
+    },
+    percentPotPaidOut() {
+      return this.totalPot > 0 ? (this.totalPaidOut / this.totalPot * 100).toFixed(2) : '0.00';
+    },
     sortedSummaries() {
       return [...this.portfolioSummaries].sort((a, b) => {
         const aVal = a[this.sortField];
@@ -245,6 +258,12 @@ export default {
 </script>
 
 <style scoped>
+.pot-paid-out {
+  font-weight: 500;
+  color: #555;
+  margin: -8px 0 12px;
+}
+
 .total {
   font-weight: bold;
 }

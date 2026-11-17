@@ -96,6 +96,9 @@
       </md-card-header>
       <md-card-content>
         <div class="total-pot-amount">{{ totalPot | toCurrency }}</div>
+        <div v-if="rankedSummaries.length" class="pot-paid-out">
+          {{ totalPaidOut | toCurrency }} paid out &middot; {{ percentPotPaidOut }}% of pot
+        </div>
         <div class="pot-ownership-link-row text-center">
           <span class="link decorated-link home-card-link" @click="goToOwnership">View All Stock Ownership &rarr;</span>
         </div>
@@ -185,6 +188,9 @@
         <div class="md-title">Rankings</div>
       </md-card-header>
       <md-card-content>
+        <div v-if="rankedSummaries.length" class="pot-paid-out">
+          {{ totalPaidOut | toCurrency }} paid out &middot; {{ percentPotPaidOut }}% of pot
+        </div>
         <div class="view-detailed-rankings-row">
           <span class="link decorated-link home-card-link" @click="goToDetailedRankings()">View Detailed Rankings &rarr;</span>
         </div>
@@ -293,6 +299,13 @@ export default {
     }
   },
   computed: {
+    // Sum of every portfolio's $ Won to Date, vs. the Total Pot.
+    totalPaidOut() {
+      return Math.round(this.rankedSummaries.reduce((sum, s) => sum + (s.moneyWonToDate || 0), 0) * 100) / 100;
+    },
+    percentPotPaidOut() {
+      return this.totalPot > 0 ? (this.totalPaidOut / this.totalPot * 100).toFixed(2) : '0.00';
+    },
     sortedTeamInvestments() {
       const field = this.investmentSortField;
       const dir = this.investmentSortOrder === 'asc' ? 1 : -1;
@@ -814,6 +827,13 @@ export default {
 .rankings-unavailable {
   color: #777;
   padding: 8px 0;
+}
+
+.pot-paid-out {
+  text-align: center;
+  font-weight: 500;
+  color: #555;
+  padding: 0 0 8px;
 }
 
 .view-detailed-rankings-row {
