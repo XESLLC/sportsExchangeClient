@@ -41,9 +41,9 @@
             <td>{{ item.quantity }}</td>
             <td>{{ item.costPerShare | toCurrency }}</td>
             <td>{{ item.total | toCurrency }}</td>
-            <td>{{ item.dividendPerShare | toCurrency }}</td>
+            <td>{{ item.dividendPerShare | toCurrencyPerShare }}</td>
             <td>{{ item.totalDividends | toCurrency }}</td>
-            <td>{{ item.profitLossPerShare | toCurrency }}</td>
+            <td>{{ item.profitLossPerShare | toCurrencyPerShare }}</td>
             <td>{{ item.totalProfitLoss | toCurrency }}</td>
           </tr>
         </tbody>
@@ -114,13 +114,17 @@ export default {
       });
     },
     totals() {
-      return this.tournamentTeamStocks.reduce((result, teamStock) => {
+      const totals = this.tournamentTeamStocks.reduce((result, teamStock) => {
         result.quantity += teamStock.quantity;
         result.total += teamStock.total;
-        result.totalDividends += teamStock.totalDividends;
-        result.totalProfitLoss += teamStock.totalProfitLoss;
+        result.rawDividends += teamStock.dividendPerShare * teamStock.quantity;
         return result;
-      }, { quantity: 0, total: 0, totalDividends: 0, totalProfitLoss: 0 });
+      }, { quantity: 0, total: 0, rawDividends: 0 });
+      // Floor once on the portfolio total (not per team) - matches the
+      // server's moneyWonToDate exactly.
+      totals.totalDividends = this.truncateDecimals(totals.rawDividends, 2);
+      totals.totalProfitLoss = totals.totalDividends - totals.total;
+      return totals;
     }
   },
   props: {

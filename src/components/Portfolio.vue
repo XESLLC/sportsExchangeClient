@@ -53,10 +53,10 @@
                       <td v-if="hasRegion">{{ item.region }}</td>
                       <td v-if="hasWins">{{ item.milestoneData && item.milestoneData[0] ? item.milestoneData[0].wins : '-' }}</td>
                       <td v-for="(milestone, index) in maxMilestoneData" :key="milestone.milestoneId">
-                        <span v-if="item.milestoneData && item.milestoneData[index]">{{ truncateDecimals(item.milestoneData[index].dividendPrice / item.numStocksInCirculation, 2) | toCurrency }}</span>
+                        <span v-if="item.milestoneData && item.milestoneData[index]">{{ item.milestoneData[index].dividendPrice / item.numStocksInCirculation | toCurrencyPerShare }}</span>
                         <span v-else>-</span>
                       </td>
-                      <td>{{ getTotalDividendAmountForTeam(item) | toCurrency }}</td>
+                      <td>{{ getTotalDividendAmountForTeam(item) | toCurrencyPerShare }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -188,7 +188,8 @@ export default {
         const totalDivendend = tournamentTeam.milestoneData.reduce((result, milestoneData) => {
           return result += milestoneData.dividendPrice;
         }, 0);
-        return this.truncateDecimals(totalDivendend / tournamentTeam.numStocksInCirculation, 2);
+        // Full precision per share - matches the server (EntryService.portfolioSummaries)
+        return totalDivendend / tournamentTeam.numStocksInCirculation;
       } else {
         return 0;
       }

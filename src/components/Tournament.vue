@@ -634,11 +634,13 @@ export default {
         const total = stocks.reduce((sum, stock) => {
           const team = teamMap.get(stock.tournamentTeamId);
           if (!team || !team.milestoneData || team.milestoneData.length === 0) return sum;
+          // Full precision per share; floor to the cent once on the portfolio
+          // total below - same convention as the server's moneyWonToDate.
           const teamDiv = team.milestoneData.reduce((s, m) =>
-            s + this.truncateDecimals(m.dividendPrice / team.numStocksInCirculation, 2), 0);
+            s + (m.dividendPrice || 0) / team.numStocksInCirculation, 0);
           return sum + teamDiv * stock.quantity;
         }, 0);
-        this.dividendTotals[i] = total;
+        this.dividendTotals[i] = this.truncateDecimals(total, 2);
       });
     },
     truncateDecimals(number, digits) {

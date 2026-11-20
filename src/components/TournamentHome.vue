@@ -123,7 +123,7 @@
               <md-table-cell>{{ row.totalShares }}</md-table-cell>
               <md-table-cell>{{ row.invested | toCurrency }}</md-table-cell>
               <md-table-cell>{{ row.percentOfPot }}%</md-table-cell>
-              <md-table-cell :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrency }}</md-table-cell>
+              <md-table-cell :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrencyPerShare }}</md-table-cell>
             </md-table-row>
             <md-table-row class="totals-row">
               <md-table-cell>Total</md-table-cell>
@@ -132,7 +132,7 @@
               <md-table-cell>{{ totalShares }}</md-table-cell>
               <md-table-cell>{{ totalInvested | toCurrency }}</md-table-cell>
               <md-table-cell>100%</md-table-cell>
-              <md-table-cell :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrency }}</md-table-cell>
+              <md-table-cell :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrencyPerShare }}</md-table-cell>
             </md-table-row>
           </md-table>
 
@@ -153,7 +153,7 @@
                 </div>
                 <div class="mobile-row mobile-sub">
                   <span>$ Return per Share:</span>
-                  <span :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrency }}</span>
+                  <span :class="row.returnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ row.returnPerShare | toCurrencyPerShare }}</span>
                 </div>
               </md-table-cell>
             </md-table-row>
@@ -173,7 +173,7 @@
                 </div>
                 <div class="mobile-row mobile-sub">
                   <span>$ Return per Share:</span>
-                  <span :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrency }}</span>
+                  <span :class="totalReturnPerShare >= 0 ? 'pl-positive' : 'pl-negative'">{{ totalReturnPerShare | toCurrencyPerShare }}</span>
                 </div>
               </md-table-cell>
             </md-table-row>
@@ -533,7 +533,8 @@ export default {
           // milestone's dividendPrice, divided by numStocksInCirculation
           // (floors at 1, so an unpurchased team divides cleanly to 0).
           const totalDividend = (t.milestoneData || []).reduce((sum, m) => sum + (m.dividendPrice || 0), 0);
-          const dividendPerShare = this.truncateDecimals(totalDividend / (t.numStocksInCirculation || 1), 2);
+          // Full precision (no per-share flooring) - matches the server.
+          const dividendPerShare = totalDividend / (t.numStocksInCirculation || 1);
           return {
             teamName: t.teamName,
             totalShares: totalTeamShares,
@@ -543,7 +544,7 @@ export default {
               : 0,
             invested: totalTeamShares * t.ipoPrice,
             dividendPerShare,
-            returnPerShare: Math.round((dividendPerShare - t.ipoPrice) * 100) / 100
+            returnPerShare: dividendPerShare - t.ipoPrice
           };
         });
         const totalInvested = rows.reduce((sum, r) => sum + r.invested, 0);
@@ -566,7 +567,7 @@ export default {
         // the totalShares-weighted average of each team's returnPerShare.
         const totalDividendPaid = rows.reduce((sum, r) => sum + r.dividendPerShare * r.totalShares, 0);
         this.totalReturnPerShare = this.totalShares > 0
-          ? Math.round(((totalDividendPaid - totalInvested) / this.totalShares) * 100) / 100
+          ? (totalDividendPaid - totalInvested) / this.totalShares
           : 0;
       } catch (err) {
         this.teamInvestments = [];

@@ -211,6 +211,27 @@ Vue.filter('toCurrency', function (value) {
   return formattedValue;
 });
 
+// Per-share dividend amounts are often fractions of a cent (e.g. a $23.65
+// dividend split over 1,150 shares = $0.020565...). Show up to 4 decimals,
+// truncated toward zero (never rounded up), instead of flooring to $0.02.
+// Dollar totals still use toCurrency.
+Vue.filter('toCurrencyPerShare', function (value) {
+  if(typeof value !== "number") {
+    return value;
+  }
+  const truncated = Math.trunc(value * 10000) / 10000;
+  const formattedValue = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+  }).format(truncated);
+  if(formattedValue.substr(0, 1) === '-'){
+    return `(${formattedValue.substring(1, formattedValue.length)})`;
+  }
+  return formattedValue;
+});
+
 new Vue({
   router,
   render: h => h(App),
